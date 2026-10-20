@@ -21,6 +21,10 @@ const PUBLIC_DIR = path.join(HERE, 'public')
 const ROOM_PATH = '/control-room/'
 const IS_WIN = process.platform === 'win32'
 const args = process.argv.slice(2)
+const argValue = (name) => {
+  const i = args.indexOf(name)
+  return i >= 0 && args[i + 1] ? args[i + 1] : undefined
+}
 
 const CONFIG = {
   port: Number(process.env.ACR_PORT) || 4800,
@@ -36,8 +40,9 @@ const CONFIG = {
   agentFlow: {
     port: Number(process.env.AGENT_FLOW_PORT) || 3001,
     app: process.env.AGENT_FLOW_APP || path.join(HERE, 'vendor', 'agent-flow', 'app.js'),
-    // Watched folder: Claude Code sessions opened in it (or in its subfolders) show up in the graph.
-    workspace: process.env.AGENT_FLOW_WORKSPACE || os.homedir(),
+    // Watched folder: Claude Code sessions opened in it (or in its subfolders) show up in the graph. Without one,
+    // the room picks it from your recent sessions (guessWorkspace).
+    workspace: argValue('--workspace') || process.env.AGENT_FLOW_WORKSPACE || null,
   },
 }
 
@@ -184,17 +189,96 @@ async function ensureHabblaud() {
 
 // ─── Agent Flow ─────────────────────────────────────────────────────────────
 
+const RECENT_SESSION_MS = 7 * 24 * 3600 * 1000
+
+/** The `cwd` a Claude Code transcript was recorded in (from its first lines), or null. */
+function transcriptCwd(file) {
+  let text = ''
+  try {
+    const fd = fs.openSync(file, 'r')
+    const buf = Buffer.alloc(256 * 1024)
+    text = buf.toString('utf8', 0, fs.readSync(fd, buf, 0, buf.length, 0))
+    fs.closeSync(fd)
+  } catch {
+    return null
+  }
+  for (const line of text.split('\n')) {
+    if (!line.includes('"cwd"')) continue
+    try {
+      const cwd = JSON.parse(line).cwd
+      if (typeof cwd === 'string' && cwd) return cwd
+    } catch {}
+  }
+  return null
+}
+
+/**
+ * Folder for Agent Flow to watch when none was given. Agent Flow follows a single folder tree, so this looks at the
+ * Claude Code sessions used in the last week (~/.claude/projects) and takes the folder of the latest one, or a parent
+ * of it when the parent covers more of them. Drive roots are left out (Agent Flow can't watch one), and so are
+ * sessions in the temp folder. Example: sessions in D:\work, D:\work\app and D:\work\site → D:\work.
+ */
+function guessWorkspace() {
+  const projects = path.join(os.homedir(), '.claude', 'projects')
+  const fold = (p) => (IS_WIN ? p.toLowerCase() : p)
+  const isUnder = (child, parent) => fold(child) === fold(parent) || fold(child).startsWith(fold(path.join(parent, path.sep)))
+  const recent = []
+  let dirs = []
+  try {
+    dirs = fs.readdirSync(projects, { withFileTypes: true }).filter((d) => d.isDirectory())
+  } catch {
+    return os.homedir()
+  }
+  for (const d of dirs) {
+    const dir = path.join(projects, d.name)
+    let newest = null
+    try {
+      for (const f of fs.readdirSync(dir)) {
+        if (!f.endsWith('.jsonl')) continue
+        const mtime = fs.statSync(path.join(dir, f)).mtimeMs
+        if (!newest || mtime > newest.mtime) newest = { file: path.join(dir, f), mtime }
+      }
+    } catch {
+      continue
+    }
+    if (!newest || Date.now() - newest.mtime > RECENT_SESSION_MS) continue
+    const cwd = transcriptCwd(newest.file)
+    if (!cwd || !fs.existsSync(cwd) || isUnder(cwd, os.tmpdir())) continue
+    recent.push({ cwd: path.resolve(cwd), mtime: newest.mtime })
+  }
+  if (!recent.length) return os.homedir()
+
+  recent.sort((a, b) => b.mtime - a.mtime)
+  let best = null
+  let bestCount = 0
+  // From the latest session's folder upwards: a parent wins only when it covers more recent sessions.
+  for (let p = recent[0].cwd; path.parse(p).root !== p; p = path.dirname(p)) {
+    const count = recent.filter((r) => isUnder(r.cwd, p)).length
+    if (count > bestCount) {
+      best = p
+      bestCount = count
+    }
+  }
+  return best ?? os.homedir()
+}
+
+/** Folder the Agent Flow started by the room is watching (unknown when it was already running). */
+let watchedFolder = null
+
 async function ensureAgentFlow() {
-  const { port, app, workspace } = CONFIG.agentFlow
+  const { port, app } = CONFIG.agentFlow
   if (await isUp(port)) return log('agent-flow', `already running (port ${port})`)
   if (!fs.existsSync(app)) return log('agent-flow', missingVendor(app))
 
-  log('agent-flow', `starting the bundled build (port ${port})...`)
+  const workspace = path.resolve(CONFIG.agentFlow.workspace ?? guessWorkspace())
+  watchedFolder = workspace
+  log('agent-flow', `starting the bundled build (port ${port}), watching ${workspace}`)
+  if (!CONFIG.agentFlow.workspace) log('agent-flow', 'picked from your recent sessions; to change it: start.cmd --workspace <folder>')
   startChild('agent-flow', app, ['--no-open', '--port', String(port)], {
     cwd: workspace,
     env: { AGENT_FLOW_TELEMETRY: process.env.AGENT_FLOW_TELEMETRY ?? 'false' },
   })
-  if (await waitFor(() => isUp(port), 20_000, 500)) log('agent-flow', `running (port ${port}, watching ${workspace})`)
+  if (await waitFor(() => isUp(port), 20_000, 500)) log('agent-flow', `running (port ${port})`)
   else log('agent-flow', `did not answer on port ${port} in time`)
 }
 
@@ -224,7 +308,7 @@ async function status() {
   const [habblaud, agentFlow] = await Promise.all([isUp(CONFIG.habblaud.port, '/api/health'), isUp(CONFIG.agentFlow.port)])
   const value = {
     habblaud: { up: habblaud, url: '/' },
-    agentFlow: { up: agentFlow, url: `${AGENT_FLOW_ORIGIN}/` },
+    agentFlow: { up: agentFlow, url: `${AGENT_FLOW_ORIGIN}/`, watching: watchedFolder },
   }
   statusCache = { at: Date.now(), value }
   return value

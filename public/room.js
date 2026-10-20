@@ -35,6 +35,7 @@
       down: 'the room server stopped',
       downHint: 'Run start.cmd (or npm start) again.',
       recordToast: 'Recording mode. G, Esc or the top edge bring the bar back.',
+      watching: 'Agent Flow · watching {0} (sessions in this folder and its subfolders)',
     },
     pt: {
       tagline: '// agentes ao vivo',
@@ -59,6 +60,7 @@
       down: 'o servidor da sala parou',
       downHint: 'Rode o start.cmd (ou npm start) de novo.',
       recordToast: 'Modo gravação. G, Esc ou o topo da tela trazem a barra de volta.',
+      watching: 'Agent Flow · observando {0} (sessões nesta pasta e nas subpastas)',
     },
   }
   const lang = (navigator.language || 'en').toLowerCase().startsWith('pt') ? 'pt' : 'en'
@@ -303,6 +305,7 @@
       const info = status?.[svc.key]
       const up = !!info?.up
       if (info?.url) svc.url = info.url
+      if (info?.watching) svc.chip.title = t('watching').replace('{0}', info.watching)
       // First time up, or back after being down: load it again (the frame may hold an error page).
       if (up && svc.up !== true && svc.url) svc.frame.src = svc.url
       if (status) svc.up = up

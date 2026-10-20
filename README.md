@@ -76,13 +76,15 @@ The room finds it. If something already answers on Habblaud's or Agent Flow's po
 | `HABBLAUD_PORT` | `4747` | Port for Habblaud |
 | `HABBLAUD_MODE` | `auto` | `auto`, `bundled` (always the build in `vendor/`) or `docker` (Habblaud's own container) |
 | `AGENT_FLOW_PORT` | `3001` | Port for Agent Flow |
-| `AGENT_FLOW_WORKSPACE` | your home folder | Folder Agent Flow watches: sessions opened in it or in its subfolders appear in the graph |
+| `AGENT_FLOW_WORKSPACE` | picked from your recent sessions | Folder Agent Flow watches: sessions opened in it or in its subfolders appear in the graph (see below) |
 | `AGENT_FLOW_TELEMETRY` | `false` | Agent Flow's anonymous telemetry, off unless you turn it on |
 | `AGENT_FLOW_APP` | `vendor/agent-flow/app.js` | Another Agent Flow build to run instead |
 
 Habblaud's own variables also work, for example `HABBLAUD_WORLD=0` (hides Habblaud World) or `HABBLAUD_PTY=1` (interactive terminal, which needs Habblaud's full install). The room turns off Habblaud's update notice (`HABBLAUD_UPDATE_CHECK=0`), because new versions arrive through this repository.
 
 `--no-open` starts the room without opening the browser.
+
+**Which sessions show up in Agent Flow.** Agent Flow follows one folder and its subfolders. Without a choice of yours, the room looks at the Claude Code sessions you used in the last week and picks the folder that holds most of them (for example `D:\work` when you work in `D:\work\app` and `D:\work\site`). The room's log shows the folder, and so does the tooltip of the Agent Flow light in the top bar. To choose another one: `start.cmd --workspace "D:\other\folder"` or `AGENT_FLOW_WORKSPACE`.
 
 ## How it works
 

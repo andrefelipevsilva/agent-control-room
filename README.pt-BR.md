@@ -76,13 +76,15 @@ O [`vendor/README.md`](vendor/README.md) traz os commits exatos de cada projeto.
 | `HABBLAUD_PORT` | `4747` | Porta do Habblaud |
 | `HABBLAUD_MODE` | `auto` | `auto`, `bundled` (sempre o build do `vendor/`) ou `docker` (o container do próprio Habblaud) |
 | `AGENT_FLOW_PORT` | `3001` | Porta do Agent Flow |
-| `AGENT_FLOW_WORKSPACE` | sua pasta pessoal | Pasta que o Agent Flow observa: sessões abertas nela ou nas subpastas aparecem no grafo |
+| `AGENT_FLOW_WORKSPACE` | escolhida pelas suas sessões recentes | Pasta que o Agent Flow observa: sessões abertas nela ou nas subpastas aparecem no grafo (veja abaixo) |
 | `AGENT_FLOW_TELEMETRY` | `false` | Telemetria anônima do Agent Flow, desligada a menos que você ligue |
 | `AGENT_FLOW_APP` | `vendor/agent-flow/app.js` | Outro build do Agent Flow para rodar no lugar |
 
 As variáveis do próprio Habblaud também valem, por exemplo `HABBLAUD_WORLD=0` (esconde o Habblaud World) ou `HABBLAUD_PTY=1` (terminal interativo, que precisa da instalação completa do Habblaud). A sala desliga o aviso de versão nova do Habblaud (`HABBLAUD_UPDATE_CHECK=0`), porque as versões novas chegam por este repositório.
 
 `--no-open` liga a sala sem abrir o navegador.
+
+**Quais sessões aparecem no Agent Flow.** O Agent Flow acompanha uma pasta e as subpastas dela. Se você não escolher, a sala olha as sessões do Claude Code que você usou na última semana e escolhe a pasta que abrange a maioria delas (por exemplo `D:\trabalho` quando você trabalha em `D:\trabalho\app` e `D:\trabalho\site`). O log da sala mostra a pasta, e a dica da luz do Agent Flow na barra de cima também. Para escolher outra: `start.cmd --workspace "D:\outra\pasta"` ou `AGENT_FLOW_WORKSPACE`.
 
 ## Como funciona
 
