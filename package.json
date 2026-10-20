@@ -1,0 +1,22 @@
+{
+  "name": "agent-control-room",
+  "version": "0.1.0",
+  "private": true,
+  "description": "One screen to watch your Claude Code agents live: the Habblaud office and the Agent Flow graph, side by side.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node --check server.mjs && node --check public/room.js"
+  },
+  "keywords": [
+    "claude-code",
+    "agents",
+    "visualization",
+    "habblaud",
+    "agent-flow"
+  ]
+}

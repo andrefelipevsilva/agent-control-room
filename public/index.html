@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Control Room</title>
+  <link rel="icon" href="icon.svg">
+  <link rel="stylesheet" href="room.css">
+</head>
+<body data-layout="side">
+  <div class="bar-trigger" aria-hidden="true"></div>
+  <header class="bar">
+    <div class="brand"><span class="prompt">&gt;_</span> agent control room <span class="sub" data-i18n="tagline">// live agents</span></div>
+
+    <nav class="layouts" aria-label="Layout">
+      <button type="button" data-layout="side" data-i18n-title="sideTitle"><kbd>1</kbd> <span data-i18n="side">side by side</span></button>
+      <button type="button" data-layout="stacked" data-i18n-title="stackedTitle"><kbd>2</kbd> <span data-i18n="stacked">stacked</span></button>
+      <button type="button" data-layout="floating" data-i18n-title="floatingTitle"><kbd>3</kbd> <span data-i18n="floating">floating</span></button>
+      <span class="sep" aria-hidden="true"></span>
+      <button type="button" id="swap" data-i18n-title="swapTitle"><kbd>T</kbd> <span data-i18n="swap">swap</span></button>
+      <button type="button" id="record" data-i18n-title="recordTitle"><kbd>G</kbd> <span data-i18n="record">record</span></button>
+    </nav>
+
+    <div class="status">
+      <span class="chip" id="chip-habblaud" data-state="waiting" title="Habblaud">habblaud</span>
+      <span class="chip" id="chip-agentFlow" data-state="waiting" title="Agent Flow">agent flow</span>
+    </div>
+  </header>
+
+  <main class="stage" id="stage">
+    <section class="pane" id="pane-habblaud" data-state="waiting">
+      <div class="handle"><span>habblaud</span> <span class="handle-hint" data-i18n="dragToMove">· drag to move</span></div>
+      <iframe id="frame-habblaud" title="Habblaud"></iframe>
+      <div class="notice"><p class="notice-title"></p><p class="notice-hint"></p></div>
+      <div class="corner" aria-hidden="true"></div>
+    </section>
+
+    <div class="divider" id="divider" role="separator" tabindex="0" data-i18n-title="dividerTitle"></div>
+
+    <section class="pane" id="pane-agentFlow" data-state="waiting">
+      <div class="handle"><span>agent flow</span> <span class="handle-hint" data-i18n="dragToMove">· drag to move</span></div>
+      <iframe id="frame-agentFlow" title="Agent Flow"></iframe>
+      <div class="notice"><p class="notice-title"></p><p class="notice-hint"></p></div>
+      <div class="corner" aria-hidden="true"></div>
+    </section>
+  </main>
+
+  <footer class="credits">
+    <span data-i18n="runs">runs</span>
+    <a href="https://github.com/marmottajr/habblaud" target="_blank" rel="noopener">Habblaud</a> (MIT) +
+    <a href="https://github.com/patoles/agent-flow" target="_blank" rel="noopener">Agent Flow</a> (Apache-2.0)
+    <span data-i18n="notAffiliated">· independent project, not affiliated with either</span>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="room.js"></script>
+</body>
+</html>
