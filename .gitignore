@@ -1,2 +1,4 @@
 node_modules/
 .claude/settings.local.json
+# Raw recordings stay local; the README uses docs/demo.gif.
+/*.mp4

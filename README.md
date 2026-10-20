@@ -4,7 +4,7 @@
 
 [Leia em português](README.pt-BR.md)
 
-![Agent Control Room: Habblaud on the left, Agent Flow on the right](docs/screenshot.png)
+![Agent Control Room: Habblaud and Agent Flow following the same Claude Code session, through the side-by-side, stacked and floating layouts](docs/demo.gif)
 
 - **Habblaud** shows *who* is working: each session is a character walking around an office, with an activity feed.
 - **Agent Flow** shows *how* they work: every tool call, subagent and return as a live graph.

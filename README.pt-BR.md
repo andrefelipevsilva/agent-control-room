@@ -4,7 +4,7 @@
 
 [Read in English](README.md)
 
-![Agent Control Room: Habblaud à esquerda, Agent Flow à direita](docs/screenshot.png)
+![Agent Control Room: Habblaud e Agent Flow acompanhando a mesma sessão do Claude Code, nos layouts lado a lado, empilhado e flutuante](docs/demo.gif)
 
 - O **Habblaud** mostra *quem* está trabalhando: cada sessão é um personagem andando num escritório, com um feed de atividade.
 - O **Agent Flow** mostra *como* eles trabalham: cada chamada de ferramenta, subagente e retorno num grafo ao vivo.
