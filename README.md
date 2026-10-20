@@ -41,7 +41,7 @@ Tested on Windows 11. macOS and Linux should work with `npm start`, but have not
 ## Install and run
 
 ```bash
-git clone https://github.com/<your-user>/agent-control-room.git
+git clone https://github.com/andrefelipevsilva/agent-control-room.git
 cd agent-control-room
 ```
 
