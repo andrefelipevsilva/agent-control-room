@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 // Agent Control Room: the Habblaud office and the Agent Flow graph on one screen.
 //
-// 1. Makes sure both are running: starts Docker Desktop and the Habblaud container, and Agent Flow, when missing.
+// 1. Makes sure both are running. Each one is reused when it already answers; otherwise the room runs the unmodified
+//    builds in vendor/ with this same Node (Habblaud can also come from its own Docker container, when there is one).
 // 2. Opens a proxy on 127.0.0.1 only. The room page lives at /control-room/ and everything else goes to Habblaud.
 //    Habblaud sends X-Frame-Options: DENY; the proxy turns it into SAMEORIGIN so the room (same origin) can embed it.
 //    Third-party sites still can't.
 // 3. Agent Flow is embedded straight from its own address (it sends no X-Frame-Options).
-//
-// Neither project is modified: updating Habblaud or Agent Flow doesn't break the room.
 
 import http from 'node:http'
 import net from 'node:net'
@@ -28,14 +27,15 @@ const CONFIG = {
   open: !args.includes('--no-open'),
   habblaud: {
     port: Number(process.env.HABBLAUD_PORT) || 4747,
-    dir: process.env.HABBLAUD_DIR || path.join(os.homedir(), 'habblaud'),
+    // auto: the Docker container from Habblaud's own install when Docker is running and the container exists,
+    // otherwise the bundled build. "docker" or "bundled" forces one of them.
+    mode: (process.env.HABBLAUD_MODE || 'auto').toLowerCase(),
+    entry: path.join(HERE, 'vendor', 'habblaud', 'dist', 'server', 'index.js'),
     container: 'habblaud',
-    image: 'habblaud:local',
   },
   agentFlow: {
     port: Number(process.env.AGENT_FLOW_PORT) || 3001,
-    // Local build (pnpm run build:app in a clone next to this folder); without it, `npx agent-flow-app`.
-    app: process.env.AGENT_FLOW_APP || path.join(HERE, '..', 'agent-flow', 'app', 'dist', 'app.js'),
+    app: process.env.AGENT_FLOW_APP || path.join(HERE, 'vendor', 'agent-flow', 'app.js'),
     // Watched folder: Claude Code sessions opened in it (or in its subfolders) show up in the graph.
     workspace: process.env.AGENT_FLOW_WORKSPACE || os.homedir(),
   },
@@ -47,6 +47,8 @@ const AGENT_FLOW_ORIGIN = `http://127.0.0.1:${CONFIG.agentFlow.port}`
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const log = (who, msg) => console.log(`[${who}] ${msg}`)
+/** Logs why a step could not run and reports it as not started. */
+const fail = (who, msg) => (log(who, msg), false)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /** Did the service answer (any status below 500)? */
@@ -77,15 +79,45 @@ function openBrowser(url) {
   else spawn(process.platform === 'darwin' ? 'open' : 'xdg-open', [url], { stdio: 'ignore', detached: true }).unref()
 }
 
-/** On Windows a child started through a shell (npx) leaves node running underneath: kill the whole tree. */
+/** Kills a child and whatever it started (on Windows, killing the parent alone leaves its children running). */
 function killTree(child) {
   if (IS_WIN) run('taskkill', ['/pid', String(child.pid), '/T', '/F'])
   else child.kill()
 }
 
-// ─── Habblaud (Docker) ──────────────────────────────────────────────────────
+/** Processes the room started, by name. A service that was already running is never touched. */
+const children = new Map()
+
+/** Runs a vendored build with this same Node, its output prefixed with the service name. */
+function startChild(name, script, scriptArgs, { cwd, env }) {
+  const child = spawn(process.execPath, [script, ...scriptArgs], {
+    cwd,
+    env: { ...process.env, ...env },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  for (const stream of [child.stdout, child.stderr]) {
+    stream.setEncoding('utf8')
+    stream.on('data', (chunk) =>
+      chunk
+        .split(/\r?\n/)
+        .filter(Boolean)
+        // Habblaud already tags its own lines with [habblaud].
+        .forEach((line) => (line.startsWith(`[${name}]`) ? console.log(line) : log(name, line))),
+    )
+  }
+  child.on('exit', (code) => {
+    log(name, `stopped (code ${code})`)
+    children.delete(name)
+  })
+  children.set(name, child)
+}
+
+const missingVendor = (file) => `${file} is missing. Download the repository again, or rebuild it with: node scripts/vendor.mjs`
+
+// ─── Habblaud ───────────────────────────────────────────────────────────────
 
 const dockerOk = () => run('docker', ['info', '--format', '{{.ServerVersion}}']).status === 0
+const containerExists = (name) => run('docker', ['container', 'inspect', name]).status === 0
 
 function startDockerDesktop() {
   if (IS_WIN) {
@@ -101,68 +133,69 @@ function startDockerDesktop() {
   return false
 }
 
-async function ensureHabblaud() {
-  const { port, dir, container, image } = CONFIG.habblaud
-  const healthy = () => isUp(port, '/api/health')
-  if (await healthy()) return log('habblaud', `already running (port ${port})`)
-
+async function startHabblaudContainer() {
+  const { container } = CONFIG.habblaud
   if (!dockerOk()) {
     log('habblaud', 'Docker is not running, opening Docker Desktop...')
     if (!startDockerDesktop() || !(await waitFor(async () => dockerOk(), 180_000, 3000))) {
-      return log('habblaud', "couldn't reach Docker. Open Docker Desktop and run the room again.")
+      return fail('habblaud', "couldn't reach Docker. Open Docker Desktop and run the room again.")
     }
   }
-
-  if (run('docker', ['container', 'inspect', container]).status === 0) {
-    log('habblaud', 'starting the container...')
-    run('docker', ['start', container], { stdio: 'inherit' })
-  } else if (fs.existsSync(path.join(dir, 'package.json'))) {
-    // No container yet: Habblaud's own script writes the compose override with your accounts and starts it.
-    const hasImage = run('docker', ['image', 'inspect', image]).status === 0
-    log('habblaud', `no container; starting it from ${dir} (npm run docker:up)...`)
-    run('npm', ['run', 'docker:up', ...(hasImage ? ['--', '--no-build'] : [])], { cwd: dir, stdio: 'inherit', shell: true, timeout: 900_000 })
-  } else {
-    return log('habblaud', `Habblaud not found in ${dir} (set HABBLAUD_DIR)`)
+  if (!containerExists(container)) {
+    return fail('habblaud', `no "${container}" container. Install Habblaud with Docker, or use HABBLAUD_MODE=bundled.`)
   }
+  log('habblaud', 'starting its Docker container...')
+  run('docker', ['start', container], { stdio: 'inherit' })
+  return true
+}
 
-  if (await waitFor(healthy, 90_000)) log('habblaud', `running (port ${port})`)
-  else log('habblaud', 'the container started, but /api/health did not answer within 90 s')
+function startBundledHabblaud() {
+  const { port, entry } = CONFIG.habblaud
+  const [major, minor] = process.versions.node.split('.').map(Number)
+  if (major < 22 || (major === 22 && minor < 12)) {
+    return fail('habblaud', `needs Node.js 22.12 or newer (this one is ${process.versions.node}): https://nodejs.org`)
+  }
+  if (!fs.existsSync(entry)) return fail('habblaud', missingVendor(entry))
+  log('habblaud', `starting the bundled build (port ${port})...`)
+  startChild('habblaud', entry, [], {
+    cwd: HERE,
+    env: {
+      HABBLAUD_PORT: String(port),
+      HABBLAUD_HOST: process.env.HABBLAUD_HOST ?? '127.0.0.1',
+      // New versions arrive with this repository; Habblaud's own update notice would point at another folder.
+      HABBLAUD_UPDATE_CHECK: process.env.HABBLAUD_UPDATE_CHECK ?? '0',
+    },
+  })
+  return true
+}
+
+async function ensureHabblaud() {
+  const { port, mode, container } = CONFIG.habblaud
+  const healthy = () => isUp(port, '/api/health')
+  if (await healthy()) return log('habblaud', `already running (port ${port})`)
+
+  const useDocker = mode === 'docker' || (mode === 'auto' && dockerOk() && containerExists(container))
+  const started = useDocker ? await startHabblaudContainer() : startBundledHabblaud()
+  if (!started) return
+
+  if (await waitFor(healthy, useDocker ? 90_000 : 30_000)) log('habblaud', `running (port ${port})`)
+  else log('habblaud', `did not answer on port ${port} in time`)
 }
 
 // ─── Agent Flow ─────────────────────────────────────────────────────────────
 
-/** Only the process the room started; an Agent Flow that was already running is left alone. */
-let agentFlowChild = null
-
 async function ensureAgentFlow() {
   const { port, app, workspace } = CONFIG.agentFlow
   if (await isUp(port)) return log('agent-flow', `already running (port ${port})`)
+  if (!fs.existsSync(app)) return log('agent-flow', missingVendor(app))
 
-  const flags = ['--no-open', '--port', String(port)]
-  const local = fs.existsSync(app)
-  log('agent-flow', local ? `starting ${app}` : 'no local build found, starting it with npx agent-flow-app')
-
-  const opts = {
+  log('agent-flow', `starting the bundled build (port ${port})...`)
+  startChild('agent-flow', app, ['--no-open', '--port', String(port)], {
     cwd: workspace,
-    env: { ...process.env, AGENT_FLOW_TELEMETRY: process.env.AGENT_FLOW_TELEMETRY ?? 'false' },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  }
-  if (local) agentFlowChild = spawn(process.execPath, [app, ...flags], opts)
-  // npx is a .cmd on Windows, so it needs a shell; the whole command goes as one string (only fixed words and the port).
-  else if (IS_WIN) agentFlowChild = spawn(`npx -y agent-flow-app ${flags.join(' ')}`, { ...opts, shell: true })
-  else agentFlowChild = spawn('npx', ['-y', 'agent-flow-app', ...flags], opts)
-  for (const stream of [agentFlowChild.stdout, agentFlowChild.stderr]) {
-    stream.setEncoding('utf8')
-    stream.on('data', (chunk) => chunk.split(/\r?\n/).filter(Boolean).forEach((line) => log('agent-flow', line)))
-  }
-  agentFlowChild.on('exit', (code) => {
-    log('agent-flow', `stopped (code ${code})`)
-    agentFlowChild = null
+    env: { AGENT_FLOW_TELEMETRY: process.env.AGENT_FLOW_TELEMETRY ?? 'false' },
   })
-
-  // npx may need to download the package the first time.
-  if (await waitFor(() => isUp(port), local ? 20_000 : 120_000, 500)) log('agent-flow', `running (port ${port}, watching ${workspace})`)
-  else log('agent-flow', 'did not answer in time')
+  if (await waitFor(() => isUp(port), 20_000, 500)) log('agent-flow', `running (port ${port}, watching ${workspace})`)
+  else log('agent-flow', `did not answer on port ${port} in time`)
 }
 
 // ─── Room page (/control-room/) ─────────────────────────────────────────────
@@ -295,7 +328,7 @@ server.listen(CONFIG.port, '127.0.0.1', async () => {
   log('room', `ready at ${ROOM_URL}`)
   if (CONFIG.open) openBrowser(ROOM_URL)
   await Promise.all([ensureHabblaud(), ensureAgentFlow()])
-  log('room', 'Ctrl+C closes the room (the Habblaud container keeps running).')
+  log('room', 'Ctrl+C closes the room and what it started (a Habblaud Docker container keeps running).')
 })
 
 let closing = false
@@ -303,14 +336,16 @@ async function shutdown() {
   if (closing) return
   closing = true
   server.close()
-  const child = agentFlowChild
-  if (child) {
-    // Agent Flow removes its discovery file (~/.claude/agent-flow) when it exits on its own; a forced kill leaves it
-    // behind. On Windows Ctrl+C already reached it (same console); elsewhere, pass it on. Force only if it hangs.
-    if (!IS_WIN) child.kill('SIGINT')
-    const exited = await Promise.race([new Promise((r) => child.once('exit', () => r(true))), sleep(2000).then(() => false)])
-    if (!exited) killTree(child)
-  }
+  // Both clean up when they exit on their own (Agent Flow removes its discovery file in ~/.claude/agent-flow; a
+  // forced kill leaves it behind). On Windows Ctrl+C already reached them (same console); elsewhere, pass it on.
+  // Force only the ones that hang.
+  await Promise.all(
+    [...children.values()].map(async (child) => {
+      if (!IS_WIN) child.kill('SIGINT')
+      const exited = await Promise.race([new Promise((r) => child.once('exit', () => r(true))), sleep(2000).then(() => false)])
+      if (!exited) killTree(child)
+    }),
+  )
   process.exit(0)
 }
 process.on('SIGINT', shutdown)

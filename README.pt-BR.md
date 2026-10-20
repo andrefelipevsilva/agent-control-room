@@ -8,13 +8,15 @@
 
 - O **Habblaud** mostra *quem* está trabalhando: cada sessão é um personagem andando num escritório, com um feed de atividade.
 - O **Agent Flow** mostra *como* eles trabalham: cada chamada de ferramenta, subagente e retorno num grafo ao vivo.
-- O **Agent Control Room** liga os dois, coloca os dois numa tela só e traz layouts feitos para assistir e para gravar vídeo.
+- O **Agent Control Room** roda os dois, coloca os dois numa tela só e traz layouts feitos para assistir e para gravar vídeo.
 
-É um projeto independente. Ele não inclui nem altera o código de nenhuma das duas ferramentas: roda as suas instalações locais das duas e mostra as duas juntas.
+Tudo vem neste repositório: clone (ou baixe o ZIP), clique duas vezes no `start.cmd` e pronto. A única coisa que precisa estar instalada é o Node.js.
+
+É um projeto independente. Ele traz os builds oficiais das duas ferramentas, sem alteração, e roda os dois juntos.
 
 ## O que ele faz
 
-- **Um comando** liga tudo: o Docker Desktop e o container do Habblaud quando estão desligados, o Agent Flow quando não está rodando, e o navegador.
+- **Um clique** liga tudo e abre o navegador. Nada mais para instalar: sem Docker e sem instalar cada ferramenta separado.
 - **Três layouts**: lado a lado, empilhado (um em cima do outro, feito para vídeo vertical 9:16) e flutuante (um painel sobre o outro, que você arrasta e redimensiona).
 - **Trocar** os dois de lugar e **arrastar o divisor** (duplo clique divide ao meio). Os painéis nunca recarregam quando o layout muda.
 - **Modo gravação** esconde a barra e o rodapé. Passe o mouse no topo, aperte `G` ou `Esc` para a barra voltar.
@@ -31,45 +33,54 @@ Os atalhos valem com o foco na sala. Depois de clicar dentro de um painel, cliqu
 
 ## Requisitos
 
-- [Node.js](https://nodejs.org/) 20 ou mais novo
-- [Habblaud](https://habblaud.com) instalado. A instalação guiada dele fica em `~/habblaud` e roda no Docker.
+- [Node.js](https://nodejs.org/) 22.12 ou mais novo
 - [Claude Code](https://claude.com/claude-code)
-- O Agent Flow vem sozinho pelo `npx agent-flow-app`, ou de um build local (veja abaixo).
 
-Testado no Windows 11 com Docker Desktop. macOS e Linux devem funcionar (`npm start`), mas ainda não foram testados.
+Testado no Windows 11. macOS e Linux devem funcionar com `npm start`, mas ainda não foram testados.
 
 ## Instalar e rodar
 
 ```bash
 git clone https://github.com/<seu-usuario>/agent-control-room.git
 cd agent-control-room
-npm start
 ```
 
-No Windows também dá para clicar duas vezes no `start.cmd`. A sala abre em `http://localhost:4800/control-room/`. Abra uma sessão do Claude Code em outro terminal e veja ela aparecer dos dois lados.
+Ou use **Code → Download ZIP** no GitHub e descompacte.
 
-`Ctrl+C` fecha a sala e o Agent Flow que ela abriu. O container do Habblaud continua ligado, como já acontece normalmente.
+Depois clique duas vezes no **`start.cmd`** (Windows), ou rode `npm start`. A sala abre em `http://localhost:4800/control-room/`. Abra uma sessão do Claude Code em outro terminal e veja ela aparecer dos dois lados.
 
-### Agent Flow de um build local (opcional)
+`Ctrl+C` (ou fechar a janela) para a sala e as ferramentas que ela ligou. Um container Docker do Habblaud continua ligado, como já acontece normalmente.
 
-Se existir uma pasta `agent-flow` ao lado desta, com o build em `agent-flow/app/dist/app.js`, a sala usa esse build no lugar do `npx`:
+### Já usa o Habblaud com Docker?
 
-```bash
-git clone https://github.com/patoles/agent-flow.git
-cd agent-flow && pnpm i && pnpm run build:app
-```
+A sala acha. Se algo já responde na porta do Habblaud ou do Agent Flow, a sala usa como está. Se o Docker estiver rodando e o container `habblaud` existir, a sala liga esse container no lugar do build empacotado. `HABBLAUD_MODE=docker` ou `HABBLAUD_MODE=bundled` escolhe um dos dois.
+
+## O que vem no repositório
+
+| Caminho | O que é |
+|---|---|
+| `server.mjs` | A sala: liga as duas ferramentas e serve a página. Node puro, sem dependências. |
+| `public/` | A página da sala (layouts, divisor, modo gravação). |
+| `start.cmd` | Atalho do Windows. |
+| `vendor/habblaud/` | Habblaud v1.0.3, build oficial, sem alteração. |
+| `vendor/agent-flow/` | Agent Flow v0.9.2, build oficial, sem alteração. |
+| `scripts/vendor.mjs` | Refaz a pasta `vendor/` a partir dos repositórios oficiais. |
+
+O [`vendor/README.md`](vendor/README.md) traz os commits exatos de cada projeto. Para conferir os builds você mesmo, ou para ir para versões novas, mude as versões no `scripts/vendor.mjs` e rode `npm run vendor` (precisa de git e internet).
 
 ## Configuração
 
 | Variável | Padrão | O que faz |
 |---|---|---|
 | `ACR_PORT` | `4800` | Porta da sala |
-| `HABBLAUD_PORT` | `4747` | Porta onde o Habblaud escuta |
-| `HABBLAUD_DIR` | `~/habblaud` | Pasta do Habblaud, usada só quando o container dele ainda não existe |
+| `HABBLAUD_PORT` | `4747` | Porta do Habblaud |
+| `HABBLAUD_MODE` | `auto` | `auto`, `bundled` (sempre o build do `vendor/`) ou `docker` (o container do próprio Habblaud) |
 | `AGENT_FLOW_PORT` | `3001` | Porta do Agent Flow |
-| `AGENT_FLOW_APP` | `../agent-flow/app/dist/app.js` | Build local do Agent Flow; sem ele, usa `npx agent-flow-app` |
 | `AGENT_FLOW_WORKSPACE` | sua pasta pessoal | Pasta que o Agent Flow observa: sessões abertas nela ou nas subpastas aparecem no grafo |
 | `AGENT_FLOW_TELEMETRY` | `false` | Telemetria anônima do Agent Flow, desligada a menos que você ligue |
+| `AGENT_FLOW_APP` | `vendor/agent-flow/app.js` | Outro build do Agent Flow para rodar no lugar |
+
+As variáveis do próprio Habblaud também valem, por exemplo `HABBLAUD_WORLD=0` (esconde o Habblaud World) ou `HABBLAUD_PTY=1` (terminal interativo, que precisa da instalação completa do Habblaud). A sala desliga o aviso de versão nova do Habblaud (`HABBLAUD_UPDATE_CHECK=0`), porque as versões novas chegam por este repositório.
 
 `--no-open` liga a sala sem abrir o navegador.
 
@@ -82,23 +93,25 @@ navegador ── http://localhost:4800 ── Agent Control Room (Node, só 127.
             iframe ─────────────────── Agent Flow (127.0.0.1:3001)
 ```
 
+As duas ferramentas rodam a partir do `vendor/`, com o mesmo Node que roda a sala.
+
 O Habblaud proíbe ser embutido em outras páginas (`X-Frame-Options: DENY`). A sala serve o Habblaud por um proxy pequeno na própria origem e troca esse cabeçalho por `SAMEORIGIN`. Só a página da sala, na mesma origem, consegue embuti-lo; sites de terceiros continuam sem conseguir. O resto segue como o Habblaud manda. As travas de "só pelo próprio computador" dele (terminal, pedidos de permissão, mensagens) continuam passando: o proxy mantém o `Host` original e as requisições continuam na mesma origem. O Habblaud na porta dele (4747) não muda nada.
 
 O Agent Flow não manda restrição de embutir, então a sala embute direto pelo endereço dele.
 
 ## O que roda no seu computador
 
-- O **Agent Control Room** escuta só em `127.0.0.1`. Não tem dependências e não manda nada para lugar nenhum.
-- O **Agent Flow**, na primeira vez que roda, adiciona hooks ao `~/.claude/settings.json` para o Claude Code mandar os eventos para ele (é a instalação do próprio Agent Flow; veja o README dele). A sala liga ele com a telemetria desligada.
-- O **Habblaud** roda no Docker com as pastas do Claude Code montadas como somente leitura (instalação do próprio Habblaud; veja o README dele).
+- O **Agent Control Room** escuta só em `127.0.0.1` e não manda nada para lugar nenhum.
+- O **Habblaud** lê os arquivos de sessão do Claude Code (e do Codex) e guarda os dados dele em `~/.habblaud`. Os extras dele, como o uso do plano ao vivo e responder permissões pelo escritório, precisam do mod dele no Claude Code, que vem com a [instalação completa do Habblaud](https://github.com/marmottajr/habblaud#readme).
+- O **Agent Flow**, na primeira vez que roda, adiciona hooks ao `~/.claude/settings.json` para o Claude Code mandar os eventos para ele. É a instalação do próprio Agent Flow; veja o README dele. A sala liga ele com a telemetria desligada.
 
 ## Créditos
 
 - [Habblaud](https://github.com/marmottajr/habblaud), de Márcio Junior, licença MIT.
 - [Agent Flow](https://github.com/patoles/agent-flow), de Simon Patole, licença Apache 2.0. "Agent Flow" é uma marca de Simon Patole.
 
-O Agent Control Room não tem vínculo com nenhum dos dois projetos nem é endossado por eles. O crédito do escritório e do grafo é todo dos autores; este projeto só junta os dois.
+Os builds deles em `vendor/` são redistribuídos sob as licenças deles; cada pasta mantém o `LICENSE` e um `THIRD_PARTY_NOTICES.md` com os pacotes que vão dentro. O Agent Control Room não tem vínculo com nenhum dos dois projetos nem é endossado por eles. O crédito do escritório e do grafo é todo dos autores; este projeto junta os dois.
 
 ## Licença
 
-[MIT](LICENSE), para o código deste repositório.
+[MIT](LICENSE), para o código do Agent Control Room. Tudo em `vendor/` mantém a licença de cada projeto.

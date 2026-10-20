@@ -1,0 +1,2 @@
+# Upstream builds: keep them byte for byte and out of the language stats.
+vendor/** -text linguist-vendored
