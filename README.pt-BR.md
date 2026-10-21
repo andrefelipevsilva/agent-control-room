@@ -87,6 +87,7 @@ O [`vendor/README.md`](vendor/README.md) traz os commits exatos de cada projeto.
 | `ACR_PORT` | `4800` | Porta da sala |
 | `HABBLAUD_PORT` | `4747` | Porta do Habblaud |
 | `HABBLAUD_MODE` | `auto` | `auto`, `bundled` (sempre o build do `vendor/`) ou `docker` (o container do próprio Habblaud) |
+| `HABBLAUD_APP` | `vendor/habblaud/dist/server/index.js` | Outro build do Habblaud para rodar no lugar (o `dist/server/index.js` de um clone seu); no `auto`, vale antes do Docker |
 | `AGENT_FLOW_PORT` | `3001` | Porta do Agent Flow |
 | `AGENT_FLOW_WORKSPACE` | escolhida pelas suas sessões recentes | Pasta que o Agent Flow observa: sessões abertas nela ou nas subpastas aparecem no grafo (veja abaixo) |
 | `AGENT_FLOW_TELEMETRY` | `false` | Telemetria anônima do Agent Flow, desligada a menos que você ligue |

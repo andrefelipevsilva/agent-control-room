@@ -87,6 +87,7 @@ The room finds it. If something already answers on Habblaud's or Agent Flow's po
 | `ACR_PORT` | `4800` | Port of the room |
 | `HABBLAUD_PORT` | `4747` | Port for Habblaud |
 | `HABBLAUD_MODE` | `auto` | `auto`, `bundled` (always the build in `vendor/`) or `docker` (Habblaud's own container) |
+| `HABBLAUD_APP` | `vendor/habblaud/dist/server/index.js` | Another Habblaud build to run instead (your own clone's `dist/server/index.js`); in `auto`, it wins over Docker |
 | `AGENT_FLOW_PORT` | `3001` | Port for Agent Flow |
 | `AGENT_FLOW_WORKSPACE` | picked from your recent sessions | Folder Agent Flow watches: sessions opened in it or in its subfolders appear in the graph (see below) |
 | `AGENT_FLOW_TELEMETRY` | `false` | Agent Flow's anonymous telemetry, off unless you turn it on |

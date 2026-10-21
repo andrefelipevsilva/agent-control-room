@@ -31,10 +31,11 @@ const CONFIG = {
   open: !args.includes('--no-open'),
   habblaud: {
     port: Number(process.env.HABBLAUD_PORT) || 4747,
-    // auto: the Docker container from Habblaud's own install when Docker is running and the container exists,
-    // otherwise the bundled build. "docker" or "bundled" forces one of them.
+    // auto: the build in HABBLAUD_APP when set; else the Docker container from Habblaud's own install when Docker is
+    // running and the container exists; otherwise the bundled build. "docker" or "bundled" forces one of them.
     mode: (process.env.HABBLAUD_MODE || 'auto').toLowerCase(),
-    entry: path.join(HERE, 'vendor', 'habblaud', 'dist', 'server', 'index.js'),
+    custom: Boolean(process.env.HABBLAUD_APP),
+    entry: process.env.HABBLAUD_APP || path.join(HERE, 'vendor', 'habblaud', 'dist', 'server', 'index.js'),
     container: 'habblaud',
   },
   agentFlow: {
@@ -155,13 +156,13 @@ async function startHabblaudContainer() {
 }
 
 function startBundledHabblaud() {
-  const { port, entry } = CONFIG.habblaud
+  const { port, entry, custom } = CONFIG.habblaud
   const [major, minor] = process.versions.node.split('.').map(Number)
   if (major < 22 || (major === 22 && minor < 12)) {
     return fail('habblaud', `needs Node.js 22.12 or newer (this one is ${process.versions.node}): https://nodejs.org`)
   }
-  if (!fs.existsSync(entry)) return fail('habblaud', missingVendor(entry))
-  log('habblaud', `starting the bundled build (port ${port})...`)
+  if (!fs.existsSync(entry)) return fail('habblaud', custom ? `${entry} is missing (HABBLAUD_APP).` : missingVendor(entry))
+  log('habblaud', `starting ${custom ? entry : 'the bundled build'} (port ${port})...`)
   startChild('habblaud', entry, [], {
     cwd: HERE,
     env: {
@@ -175,11 +176,11 @@ function startBundledHabblaud() {
 }
 
 async function ensureHabblaud() {
-  const { port, mode, container } = CONFIG.habblaud
+  const { port, mode, custom, container } = CONFIG.habblaud
   const healthy = () => isUp(port, '/api/health')
   if (await healthy()) return log('habblaud', `already running (port ${port})`)
 
-  const useDocker = mode === 'docker' || (mode === 'auto' && dockerOk() && containerExists(container))
+  const useDocker = mode === 'docker' || (mode === 'auto' && !custom && dockerOk() && containerExists(container))
   const started = useDocker ? await startHabblaudContainer() : startBundledHabblaud()
   if (!started) return
 
