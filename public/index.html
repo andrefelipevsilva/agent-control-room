@@ -9,51 +9,157 @@
 </head>
 <body data-layout="side">
   <div class="bar-trigger" aria-hidden="true"></div>
-  <header class="bar">
-    <div class="brand"><span class="prompt">&gt;_</span> agent control room <span class="sub" data-i18n="tagline">// live agents</span></div>
+  <div class="app" id="app">
 
-    <nav class="layouts" aria-label="Layout">
-      <button type="button" data-layout="side" data-i18n-title="sideTitle"><kbd>1</kbd> <span data-i18n="side">side by side</span></button>
-      <button type="button" data-layout="stacked" data-i18n-title="stackedTitle"><kbd>2</kbd> <span data-i18n="stacked">stacked</span></button>
-      <button type="button" data-layout="floating" data-i18n-title="floatingTitle"><kbd>3</kbd> <span data-i18n="floating">floating</span></button>
-      <span class="sep" aria-hidden="true"></span>
-      <button type="button" id="swap" data-i18n-title="swapTitle"><kbd>T</kbd> <span data-i18n="swap">swap</span></button>
-      <button type="button" id="record" data-i18n-title="recordTitle"><kbd>G</kbd> <span data-i18n="record">record</span></button>
-    </nav>
+    <header class="top">
+      <div class="top-group">
+        <button type="button" class="icon-btn" id="toggle-side" data-i18n-label="toggleSide">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg>
+        </button>
+        <div class="brand">
+          <span class="brand-name"><span class="lime">&gt;_</span> control room</span>
+          <span class="brand-version" id="version"></span>
+        </div>
+        <span class="live-pill" id="live-pill" data-state="connecting"><span class="live-dot"></span><span id="live-text"></span></span>
+      </div>
+      <div class="top-sep" aria-hidden="true"></div>
+      <div class="counters" id="counters">
+        <button type="button" class="counter" data-filter="all"><b id="count-all">0</b><span id="count-all-label" data-i18n="agents">agents</span></button>
+        <button type="button" class="counter" data-filter="working"><span class="dot dot-lime"></span><b id="count-working">0</b><span data-i18n="working">working</span></button>
+        <button type="button" class="counter counter-attention" data-filter="waiting" hidden><span class="dot dot-attention"></span><b id="count-waiting">0</b><span data-i18n="needsYou">need you</span></button>
+      </div>
+      <div class="top-fill"></div>
+      <div class="top-group">
+        <div class="seg" role="group" data-i18n-label="layout">
+          <button type="button" class="seg-icon" data-layout="side" data-i18n-label="sideTitle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M12 4v16"/></svg>
+          </button>
+          <button type="button" class="seg-icon" data-layout="stacked" data-i18n-label="stackedTitle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 12h18"/></svg>
+          </button>
+          <button type="button" class="seg-icon" data-layout="floating" data-i18n-label="floatingTitle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><rect x="12" y="11" width="6.5" height="5.5" rx="1.5"/></svg>
+          </button>
+        </div>
+        <button type="button" class="icon-btn" id="swap" data-i18n-label="swapTitle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h15l-4-4M20 16H5l4 4"/></svg>
+        </button>
+        <button type="button" class="record-btn" id="record" data-i18n-title="recordTitle"><span class="dot dot-danger"></span><span data-i18n="record">Record</span><kbd>G</kbd></button>
+        <div class="settings">
+          <button type="button" class="icon-btn" id="settings-btn" aria-haspopup="true" aria-expanded="false" data-i18n-label="settings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+          </button>
+          <div class="popover" id="settings" hidden>
+            <label class="switch"><input type="checkbox" id="opt-names" checked><span data-i18n="optNames">Names in the office</span></label>
+            <label class="switch"><input type="checkbox" id="opt-subs" checked><span data-i18n="optSubs">Subagents at the desks</span></label>
+            <p class="popover-note" id="watching-note"></p>
+          </div>
+        </div>
+      </div>
+    </header>
 
-    <div class="status">
-      <span class="chip" id="chip-habblaud" data-state="waiting" title="Habblaud">habblaud</span>
-      <span class="chip" id="chip-agentFlow" data-state="waiting" title="Agent Flow">agent flow</span>
+    <div class="body">
+      <aside class="side" id="side">
+        <label class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+          <input type="search" id="search" data-i18n-placeholder="searchPlaceholder" data-i18n-label="searchLabel" autocomplete="off" spellcheck="false">
+          <kbd>/</kbd>
+        </label>
+        <div class="chips" id="account-chips"></div>
+        <section class="side-section" id="needs-section" hidden>
+          <div class="kicker kicker-attention"><span data-i18n="needsYouKicker">// needs you</span><span class="badge-count" id="needs-count">0</span></div>
+          <div class="needs" id="needs"></div>
+        </section>
+        <section class="side-section">
+          <div class="kicker"><span data-i18n="projectsKicker">// projects</span><span class="kicker-count" id="projects-count">0</span></div>
+          <div class="projects" id="projects"></div>
+        </section>
+        <section class="side-section side-bottom">
+          <div class="kicker"><span data-i18n="accountsKicker">// accounts and limits</span></div>
+          <div class="accounts" id="accounts"></div>
+          <p class="credits">
+            <a href="https://github.com/marmottajr/habblaud" target="_blank" rel="noopener">Habblaud</a> (MIT) +
+            <a href="https://github.com/patoles/agent-flow" target="_blank" rel="noopener">Agent Flow</a> (Apache-2.0)
+          </p>
+        </section>
+      </aside>
+
+      <main class="main">
+        <div class="stage" id="stage">
+
+          <section class="pane" id="pane-office" data-i18n-label="office">
+            <div class="pane-head handle">
+              <div class="pane-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8.5 8h1M14.5 8h1M8.5 12h1M14.5 12h1M10 20.5v-4h4v4"/></svg>
+                <h2 data-i18n="office">Office</h2>
+                <span class="pane-sub" id="office-sub"></span>
+              </div>
+              <div class="pane-fill"></div>
+              <div class="seg seg-text" role="group" data-i18n-label="officeView">
+                <button type="button" data-view="vector" data-i18n="viewVector">Vector</button>
+                <button type="button" data-view="habblaud">Habblaud</button>
+              </div>
+              <button type="button" class="follow-btn" id="follow" aria-pressed="false" hidden>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+                <span id="follow-text"></span>
+              </button>
+              <button type="button" class="icon-btn icon-btn-sm" data-maximize="office" data-i18n-label="maximizeOffice">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+              </button>
+            </div>
+            <div class="office" id="office" data-view="vector">
+              <div class="office-vector" id="office-vector"></div>
+              <iframe class="office-world" id="frame-habblaud" title="Habblaud"></iframe>
+              <div class="office-legend" id="office-legend"></div>
+              <div class="zoom" id="zoom">
+                <button type="button" data-zoom="out" data-i18n-label="zoomOut"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+                <span id="zoom-level">100%</span>
+                <button type="button" data-zoom="in" data-i18n-label="zoomIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button>
+                <span class="zoom-sep" aria-hidden="true"></span>
+                <button type="button" data-zoom="fit" data-i18n-label="zoomFit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/></svg></button>
+              </div>
+              <div class="notice" id="office-notice" hidden><p class="notice-title"></p><p class="notice-hint"></p></div>
+            </div>
+            <div class="corner" aria-hidden="true"></div>
+          </section>
+
+          <div class="divider" id="divider" role="separator" tabindex="0" data-i18n-title="dividerTitle"><span class="divider-grip" aria-hidden="true"></span></div>
+
+          <section class="pane" id="pane-flow" data-i18n-label="flow">
+            <div class="pane-head handle">
+              <div class="pane-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="5.5" r="2"/><circle cx="6" cy="18.5" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 7.5v9M8 6c5 0 8 2 8.4 4M8 18c5 0 8-2 8.4-4"/></svg>
+                <h2 data-i18n="flow">Flow</h2>
+              </div>
+              <div class="picker">
+                <button type="button" class="picker-btn" id="picker-btn" aria-haspopup="listbox" aria-expanded="false"></button>
+                <div class="picker-list" id="picker-list" role="listbox" hidden></div>
+              </div>
+              <div class="pane-fill"></div>
+              <div class="seg seg-text" role="group" data-i18n-label="flowView" id="flow-tabs">
+                <button type="button" data-tab="graph" data-i18n="tabGraph">Graph</button>
+                <button type="button" data-tab="files" data-i18n="tabFiles">Files</button>
+                <button type="button" data-tab="chat" data-i18n="tabChat">Chat</button>
+                <button type="button" data-tab="cost" data-i18n="tabCost">Cost</button>
+                <button type="button" data-tab="agentflow">Agent Flow</button>
+              </div>
+            </div>
+            <div class="flow" id="flow" data-tab="graph">
+              <div class="flow-native" id="flow-native"></div>
+              <iframe class="flow-frame" id="frame-agentFlow" title="Agent Flow"></iframe>
+              <div class="notice" id="flow-notice" hidden><p class="notice-title"></p><p class="notice-hint"></p></div>
+            </div>
+            <div class="corner" aria-hidden="true"></div>
+          </section>
+        </div>
+
+        <footer class="playbar" id="playbar"></footer>
+      </main>
     </div>
-  </header>
-
-  <main class="stage" id="stage">
-    <section class="pane" id="pane-habblaud" data-state="waiting">
-      <div class="handle"><span>habblaud</span> <span class="handle-hint" data-i18n="dragToMove">· drag to move</span></div>
-      <iframe id="frame-habblaud" title="Habblaud"></iframe>
-      <div class="notice"><p class="notice-title"></p><p class="notice-hint"></p></div>
-      <div class="corner" aria-hidden="true"></div>
-    </section>
-
-    <div class="divider" id="divider" role="separator" tabindex="0" data-i18n-title="dividerTitle"></div>
-
-    <section class="pane" id="pane-agentFlow" data-state="waiting">
-      <div class="handle"><span>agent flow</span> <span class="handle-hint" data-i18n="dragToMove">· drag to move</span></div>
-      <iframe id="frame-agentFlow" title="Agent Flow"></iframe>
-      <div class="notice"><p class="notice-title"></p><p class="notice-hint"></p></div>
-      <div class="corner" aria-hidden="true"></div>
-    </section>
-  </main>
-
-  <footer class="credits">
-    <span data-i18n="runs">runs</span>
-    <a href="https://github.com/marmottajr/habblaud" target="_blank" rel="noopener">Habblaud</a> (MIT) +
-    <a href="https://github.com/patoles/agent-flow" target="_blank" rel="noopener">Agent Flow</a> (Apache-2.0)
-    <span data-i18n="notAffiliated">· independent project, not affiliated with either</span>
-  </footer>
+  </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="room.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
