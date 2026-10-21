@@ -1,2 +1,5 @@
 # Upstream builds: keep them byte for byte and out of the language stats.
 vendor/** -text linguist-vendored
+
+# Windows launchers need CRLF in every checkout and in the ZIP download.
+*.cmd text eol=crlf
