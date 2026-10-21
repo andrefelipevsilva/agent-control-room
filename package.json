@@ -1,8 +1,8 @@
 {
   "name": "agent-control-room",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "One screen to watch your Claude Code agents live: the Habblaud office and the Agent Flow graph, side by side.",
+  "description": "One screen to watch your Claude Code agents live: a vector office with a desk per agent and the session as a git graph, built on Habblaud and Agent Flow.",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node server.mjs",
     "vendor": "node scripts/vendor.mjs",
-    "check": "node --check server.mjs && node --check public/room.js && node --check scripts/vendor.mjs"
+    "check": "node --check server.mjs && node --check session.mjs && node --check scripts/vendor.mjs && node --experimental-vm-modules scripts/check-public.mjs"
   },
   "keywords": [
     "claude-code",

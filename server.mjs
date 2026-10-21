@@ -15,6 +15,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { spawn, spawnSync, exec } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import * as session from './session.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const PUBLIC_DIR = path.join(HERE, 'public')
@@ -48,6 +49,13 @@ const CONFIG = {
 }
 
 const ROOM_URL = `http://localhost:${CONFIG.port}${ROOM_PATH}`
+const VERSION = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(HERE, 'package.json'), 'utf8')).version
+  } catch {
+    return ''
+  }
+})()
 const AGENT_FLOW_ORIGIN = `http://127.0.0.1:${CONFIG.agentFlow.port}`
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -290,6 +298,8 @@ const MIME = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
+  '.txt': 'text/plain; charset=utf-8',
 }
 
 const ROOM_HEADERS = {
@@ -302,12 +312,71 @@ const ROOM_HEADERS = {
     "img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'",
 }
 
+// ─── Session transcripts (/control-room/session) ────────────────────────────
+
+const isLocalHost = (host) => /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(String(host ?? ''))
+
+function getJson(port, pathname) {
+  return new Promise((resolve, reject) => {
+    const req = http.get({ host: '127.0.0.1', port, path: pathname, timeout: 3000 }, (res) => {
+      let body = ''
+      res.setEncoding('utf8')
+      res.on('data', (c) => (body += c))
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(body))
+        } catch (err) {
+          reject(err)
+        }
+      })
+    })
+    req.on('timeout', () => req.destroy(new Error('timeout')))
+    req.on('error', reject)
+  })
+}
+
+let snapshotCache = { at: 0, value: null }
+async function habblaudSnapshot() {
+  if (snapshotCache.value && Date.now() - snapshotCache.at < 1500) return snapshotCache.value
+  const value = await getJson(CONFIG.habblaud.port, '/api/snapshot')
+  snapshotCache = { at: Date.now(), value }
+  return value
+}
+
+/**
+ * The flow of one agent, read from its Claude Code transcript. Habblaud's snapshot says which account (config dir)
+ * and session the agent belongs to; a subagent's id is "<sessionId>:<agentId>". Codex sessions are not read here
+ * (the page falls back to Habblaud's own activity history for them).
+ */
+async function sessionView(agentId, rev) {
+  const snap = await habblaudSnapshot()
+  const agent = snap.agents?.find((a) => a.id === agentId)
+  if (!agent || (agent.provider && agent.provider !== 'claude')) return { supported: false }
+  const account = snap.accounts?.find((a) => a.id === agent.account)
+  if (!account?.configDir) return { supported: false }
+  const subId = agent.kind === 'sub' ? agentId.slice(agentId.indexOf(':') + 1) : null
+  const file = session.locate(account.configDir, agent.sessionId, subId)
+  if (!file) return { supported: false }
+  const st = session.read(file)
+  if (!st) return { supported: false }
+  // The revision changes when the file grows; the boot id keeps an old page from matching a restarted server.
+  const current = `${BOOT_ID}.${st.rev}`
+  if (rev === current) return { supported: true, same: true, rev: current }
+  return {
+    supported: true,
+    ...session.view(st, { subagentFile: (id) => session.locate(account.configDir, agent.sessionId, id) }),
+    rev: current,
+  }
+}
+const BOOT_ID = Date.now().toString(36)
+
 let statusCache = { at: 0, value: null }
 
 async function status() {
   if (statusCache.value && Date.now() - statusCache.at < 1000) return statusCache.value
   const [habblaud, agentFlow] = await Promise.all([isUp(CONFIG.habblaud.port, '/api/health'), isUp(CONFIG.agentFlow.port)])
   const value = {
+    version: VERSION,
     habblaud: { up: habblaud, url: '/' },
     agentFlow: { up: agentFlow, url: `${AGENT_FLOW_ORIGIN}/`, watching: watchedFolder },
   }
@@ -324,6 +393,24 @@ async function serveRoom(req, res, pathname) {
     const body = JSON.stringify(await status())
     res.writeHead(200, { ...ROOM_HEADERS, 'Content-Type': 'application/json; charset=utf-8' })
     return res.end(body)
+  }
+  if (pathname === `${ROOM_PATH}session`) {
+    const json = (code, value) => {
+      res.writeHead(code, { ...ROOM_HEADERS, 'Content-Type': 'application/json; charset=utf-8' })
+      res.end(JSON.stringify(value))
+    }
+    // Transcripts hold your prompts and commands: only this computer's pages may read them (a page from another site
+    // that points its own domain at 127.0.0.1 still sends its own Host, and a cross-site fetch says so).
+    if (!isLocalHost(req.headers.host) || (req.headers['sec-fetch-site'] && req.headers['sec-fetch-site'] !== 'same-origin')) {
+      return json(403, { error: 'local only' })
+    }
+    const params = new URL(req.url, 'http://localhost').searchParams
+    try {
+      return json(200, await sessionView(params.get('agent') ?? '', params.get('rev')))
+    } catch (err) {
+      log('room', `session: ${err.message}`)
+      return json(200, { supported: false })
+    }
   }
 
   let rel

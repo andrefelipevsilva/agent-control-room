@@ -1,26 +1,27 @@
 # Agent Control Room
 
-**One screen to watch your Claude Code agents live.** The [Habblaud](https://github.com/marmottajr/habblaud) pixel-art office and the [Agent Flow](https://github.com/patoles/agent-flow) node graph, side by side, following the same sessions at the same time.
+**One screen to watch your Claude Code agents live.** On the left, an office with a desk for each agent and a room for each project. On the right, the selected agent's session as a git graph: your messages, its thinking, every tool call, subagents branching off and coming back. Built on [Habblaud](https://github.com/marmottajr/habblaud) and [Agent Flow](https://github.com/patoles/agent-flow), whose own views are one click away.
 
 [Leia em português](README.pt-BR.md)
 
 ![Agent Control Room: Habblaud and Agent Flow following the same Claude Code session, through the side-by-side, stacked and floating layouts](docs/demo.gif)
 
-- **Habblaud** shows *who* is working: each session is a character walking around an office, with an activity feed.
-- **Agent Flow** shows *how* they work: every tool call, subagent and return as a live graph.
-- **Agent Control Room** runs both, puts them on one screen and gives you layouts made for watching and for recording video.
+- **The office** shows *who* is working and *how they are*: each state has its own gesture (lime ring and code on the screens while working, a thought bubble while thinking, a raised hand and an orange ring when it needs you, a red screen on an error) and idle agents leave the desk for the kitchen. The **Habblaud** button swaps it for Habblaud's living pixel-art world, where agents walk around, play ping-pong and make friends and rivals.
+- **The flow** shows *what* they do, with real numbers from the session file: context used, cost, `+/-` lines per edit, how long each command took, tools and tokens of each subagent. Tabs for **Files**, **Chat** and **Cost**, and **Agent Flow** for Agent Flow's original node graph.
+- **The sidebar** puts on top whoever needs you (with the command waiting for approval), lists projects and agents, and shows each account's 5-hour and weekly limits.
 
 Everything comes in this repository: clone it (or download the ZIP), double-click `start.cmd` and you're in. The only thing you need installed is Node.js.
 
-This is an independent project. It ships the official builds of both tools, unmodified, and runs them together.
+This is an independent project. It ships the official builds of both tools, unmodified, runs them together and draws its own interface on top of their data.
 
 ## Features
 
 - **One click** starts everything and opens the browser. Nothing else to install: no Docker, no separate setup of each tool.
-- **Three layouts**: side by side, stacked (one above the other, made for 9:16 vertical video) and floating (one pane over the other, draggable and resizable).
+- **Three layouts**: side by side, stacked (one above the other, made for 9:16 vertical video) and floating (the flow over the office, draggable and resizable).
 - **Swap** the two panes, and **drag the divider** (double-click splits in half). Panes never reload when you change layouts.
-- **Record mode** hides the bar and the footer. Hover the top edge, press `G` or `Esc` to bring the bar back.
-- **Status lights** for both services; a pane shows a notice while its service is starting and reloads by itself when it comes up.
+- **Follow** an agent (the office camera keeps it in the middle) or **Locate** it from the sidebar. Zoom with the wheel or the buttons, drag to pan.
+- **Play bar**: the session on a timeline. Pause freezes the flow, the timeline scrubs it, **Review session** replays it at 0.5×, 1×, 2× or 4×.
+- **Record mode** hides the bars and the sidebar. Hover the top edge, press `G` or `Esc` to bring them back.
 - English or Portuguese, following the browser language.
 
 | Key | Action |
@@ -28,6 +29,7 @@ This is an independent project. It ships the official builds of both tools, unmo
 | `1` `2` `3` | side by side / stacked / floating |
 | `T` | swap the panes |
 | `G` | record mode (`Esc` leaves) |
+| `/` | search agents and projects |
 
 Shortcuts work while the room has focus. After clicking inside a pane, click the top bar first.
 
@@ -72,7 +74,8 @@ The room finds it. If something already answers on Habblaud's or Agent Flow's po
 | Path | What it is |
 |---|---|
 | `server.mjs` | The room: starts the two tools and serves the page. Plain Node, no dependencies. |
-| `public/` | The room page (layouts, divider, record mode). |
+| `session.mjs` | Reads Claude Code session files for the flow (incrementally, only what was appended). |
+| `public/` | The room page: office, flow, sidebar and play bar (plain ES modules, no build step). Geist fonts under the SIL OFL. |
 | `start.cmd` | Windows launcher. |
 | `vendor/habblaud/` | Habblaud v1.0.3, official build, unmodified. |
 | `vendor/agent-flow/` | Agent Flow v0.9.2, official build, unmodified. |
@@ -103,12 +106,15 @@ Habblaud's own variables also work, for example `HABBLAUD_WORLD=0` (hides Habbla
 
 ```
 browser ── http://localhost:4800 ── Agent Control Room (Node, 127.0.0.1 only)
-                                     ├── /control-room/  → the room page
-                                     └── everything else → Habblaud (127.0.0.1:4747)
-          iframe ─────────────────── Agent Flow (127.0.0.1:3001)
+                                     ├── /control-room/         → the room page
+                                     ├── /control-room/session  → steps of one session, from its transcript
+                                     └── everything else        → Habblaud (127.0.0.1:4747)
+          iframe ─────────────────── Agent Flow (127.0.0.1:3001), in the Agent Flow tab
 ```
 
 Both tools run from `vendor/` with the same Node that runs the room.
+
+The office, the sidebar and the header come from Habblaud's live stream (`/api/stream`): agents, their state and current step, projects, accounts and usage limits. The flow comes from the session's own transcript (`~/.claude/projects/...`), read by the room server: that is where the real token counts, thinking time, diffs and subagent files are. Sessions it can't read (Codex) fall back to Habblaud's activity history.
 
 Habblaud forbids being embedded in other pages (`X-Frame-Options: DENY`). The room serves Habblaud through a small proxy on its own origin and turns that header into `SAMEORIGIN`. Only the room page itself, on the same origin, can embed it; third-party sites still can't. Everything else stays as Habblaud sends it. Its checks for actions that only your own computer may do (terminal, permission prompts, messages) still pass: the proxy keeps the original `Host` and the requests stay same-origin. Habblaud on its own port (4747) is untouched.
 
@@ -116,7 +122,7 @@ Agent Flow sends no frame restriction, so the room embeds it straight from its o
 
 ## What runs on your machine
 
-- **Agent Control Room** listens on `127.0.0.1` only and sends nothing anywhere.
+- **Agent Control Room** listens on `127.0.0.1` only and sends nothing anywhere. To draw the flow it reads the transcript of the agent you select; that endpoint answers only pages of this computer.
 - **Habblaud** reads your Claude Code (and Codex) session files and keeps its own data in `~/.habblaud`. Its extras, like live plan usage and answering permission prompts from the office, need its Claude Code mod, which comes with [Habblaud's full install](https://github.com/marmottajr/habblaud#readme).
 - **Agent Flow**, the first time it runs, adds hooks to `~/.claude/settings.json` so Claude Code streams events to it. This is Agent Flow's own setup; see its README. The room starts it with telemetry off.
 
@@ -124,8 +130,9 @@ Agent Flow sends no frame restriction, so the room embeds it straight from its o
 
 - [Habblaud](https://github.com/marmottajr/habblaud) by Márcio Junior, MIT License.
 - [Agent Flow](https://github.com/patoles/agent-flow) by Simon Patole, Apache License 2.0. "Agent Flow" is a trademark of Simon Patole.
+- [Geist and Geist Mono](https://vercel.com/font) by Vercel, SIL Open Font License 1.1 (`public/fonts/OFL.txt`).
 
-Their builds in `vendor/` are redistributed under their own licenses; each folder keeps its `LICENSE` and a `THIRD_PARTY_NOTICES.md` for the packages bundled in it. Agent Control Room is not affiliated with or endorsed by either project. All credit for the office and the graph goes to their authors; this project brings them together.
+Their builds in `vendor/` are redistributed under their own licenses; each folder keeps its `LICENSE` and a `THIRD_PARTY_NOTICES.md` for the packages bundled in it. Agent Control Room is not affiliated with or endorsed by either project. The live data of the office comes from Habblaud, the "Habblaud" view is Habblaud's own world and the "Agent Flow" tab is Agent Flow's own graph; all credit for them goes to their authors.
 
 ## License
 
