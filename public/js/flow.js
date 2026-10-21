@@ -4,7 +4,7 @@
 // Steps come from the Claude Code transcript (read by the room server, /control-room/session); for sessions it can't
 // read (Codex) they come from Habblaud's activity history.
 
-import { $, esc, clock, dur, tokens, money, hhmm, setHTML, ICON, shellMarkup } from './util.js'
+import { $, esc, clock, dur, tokens, money, hhmm, setHTML, ICON, shellMarkup, rng, hash32 } from './util.js'
 import { t, locale } from './i18n.js'
 import { avatarHTML } from './avatar.js'
 import { activityLine, pendingCommand } from './sidebar.js'
@@ -100,13 +100,13 @@ async function refresh() {
       if (cur.at && Date.now() - cur.at < 3000) return
       const res = await fetch(`/api/agents/${encodeURIComponent(a.id)}`, { cache: 'no-store' })
       const detail = res.ok ? await res.json() : null
-      sessions.set(a.id, { supported: false, at: Date.now(), data: fromHistory(detail?.history ?? a.recent ?? []) })
+      sessions.set(a.id, { supported: false, at: Date.now(), data: fromHistory(detail?.history ?? a.recent ?? [], a) })
     } else {
       const q = new URLSearchParams({ agent: a.id })
       if (cur?.rev) q.set('rev', cur.rev)
       const res = await fetch(`session?${q}`, { cache: 'no-store' })
       const body = res.ok ? await res.json() : { supported: false }
-      if (body.supported === false) sessions.set(a.id, { supported: false, at: 0, data: fromHistory(a.recent ?? []) })
+      if (body.supported === false) sessions.set(a.id, { supported: false, at: 0, data: fromHistory(a.recent ?? [], a) })
       else if (!body.same) sessions.set(a.id, { supported: true, rev: body.rev, at: Date.now(), data: body })
     }
   } catch {
@@ -117,26 +117,111 @@ async function refresh() {
   renderFlow()
 }
 
-/** Habblaud activities → the same step shape the transcript gives. */
-function fromHistory(list) {
-  const events = list.filter((x) => x.kind !== 'wait').map((x) => {
-    if (x.kind === 'done') return { k: 'note', t: x.at, text: x.text }
-    if (x.kind === 'prompt') return { k: 'user', t: x.at, text: x.detail ?? x.text }
-    if (x.kind === 'think') return { k: 'think', t: x.at, dur: x.durationMs ?? null, text: '' }
-    if (x.kind === 'respond') return { k: 'text', t: x.at, text: x.detail ?? x.text }
-    if (x.kind === 'delegate') return { k: 'sub', t: x.at, type: x.tool ?? '', desc: x.detail ?? x.text, status: 'ok', dur: x.durationMs }
-    return {
+const KIND_TOOL = {
+  read: 'Read', edit: 'Edit', write: 'Write', run: 'Bash', test: 'Bash', git: 'Bash', search: 'Grep', web: 'WebFetch',
+  browser: 'Browser', plan: 'TodoWrite', skill: 'Skill', ask: 'AskUserQuestion', communicate: 'SendMessage', compact: 'Compact',
+}
+
+/**
+ * Habblaud activities → the same step shape the transcript gives, with the agent's subagents (from Habblaud's
+ * agents) as branches. Habblaud's demo agents have no numbers of their own: they get plausible ones (lines, durations,
+ * tokens) from each activity's id, so the demo shows the whole flow.
+ */
+function fromHistory(list, agent) {
+  const demo = String(agent?.id ?? '').startsWith('demo:')
+  const root = String(roomById(agent?.roomId)?.path ?? '').replaceAll('\\', '/').replace(/\/$/, '')
+  const rel = (p) => {
+    const v = String(p ?? '').replaceAll('\\', '/')
+    return root && v.toLowerCase().startsWith(`${root.toLowerCase()}/`) ? v.slice(root.length + 1) : v
+  }
+  const seeded = (x) => rng(hash32(String(x.id ?? x.at)))
+  const children = agents().filter((x) => x.parentId === agent?.id)
+  const files = new Map()
+  const events = []
+  for (const x of list) {
+    if (x.kind === 'wait') continue
+    if (x.kind === 'done') {
+      events.push({ k: 'note', t: x.at, text: x.text })
+      continue
+    }
+    if (x.kind === 'prompt') {
+      events.push({ k: 'user', t: x.at, text: x.detail ?? x.text })
+      continue
+    }
+    if (x.kind === 'think') {
+      const g = seeded(x)
+      events.push({ k: 'think', t: x.at, dur: x.durationMs ?? (demo ? Math.round(1500 + g() * 9000) : null), tok: demo ? Math.round(120 + g() * 2400) : null, text: '' })
+      continue
+    }
+    if (x.kind === 'respond') {
+      events.push({ k: 'text', t: x.at, text: x.detail ?? x.text })
+      continue
+    }
+    if (x.kind === 'delegate') {
+      // The subagents themselves come below, from Habblaud's agents.
+      if (!children.length) events.push({ k: 'sub', t: x.at, type: x.tool ?? '', desc: x.detail ?? x.text, status: 'ok', dur: x.durationMs })
+      continue
+    }
+    const isFile = ['edit', 'write', 'read'].includes(x.kind)
+    const isShell = ['run', 'test', 'git'].includes(x.kind) && x.tool !== 'GitHub'
+    const tool = x.tool ?? KIND_TOOL[x.kind] ?? x.kind
+    const ev = {
       k: 'tool',
       t: x.at,
-      tool: x.tool ?? x.kind,
-      label: x.tool ?? x.kind,
-      arg: x.detail ?? x.text,
-      kind: ['run', 'test', 'git'].includes(x.kind) ? 'shell' : ['edit', 'write', 'read'].includes(x.kind) ? 'file' : x.kind,
+      tool,
+      label: tool,
+      arg: isFile ? rel(x.detail ?? x.text) : isShell ? x.detail ?? x.text : x.text,
+      kind: isFile ? 'file' : isShell ? 'shell' : x.kind,
       status: x.error ? 'err' : 'ok',
       dur: x.durationMs,
     }
-  })
-  return { events, total: events.length, ticks: events.map((e) => [e.t, e.k === 'tool' ? 'tool' : e.k]), files: [], startedAt: events[0]?.t ?? null, historyOnly: true }
+    if (demo) {
+      const g = seeded(x)
+      if (x.kind === 'edit') {
+        ev.add = 1 + Math.round(g() * 24)
+        ev.del = Math.round(g() * 9)
+      }
+      if (x.kind === 'write') ev.add = 12 + Math.round(g() * 70)
+      if (isShell && ev.dur == null) ev.dur = Math.round(1200 + g() * 40000)
+    }
+    if (isFile) {
+      const f = files.get(ev.arg) ?? { path: ev.arg, reads: 0, edits: 0, add: 0, del: 0, at: x.at }
+      if (x.kind === 'read') f.reads++
+      else f.edits++
+      f.add += ev.add ?? 0
+      f.del += ev.del ?? 0
+      f.at = x.at
+      files.set(ev.arg, f)
+    }
+    events.push(ev)
+  }
+  for (const c of children) {
+    const done = c.status === 'done' || c.status === 'offline'
+    events.push({
+      k: 'sub',
+      t: c.startedAt,
+      type: c.role,
+      desc: c.title ?? '',
+      tools: c.stats?.toolCalls ?? 0,
+      tok: (c.stats?.tokensIn ?? 0) + (c.stats?.tokensOut ?? 0),
+      dur: (done ? c.lastEventAt : now()) - c.startedAt,
+      status: done ? 'ok' : 'run',
+    })
+  }
+  events.sort((p, q) => p.t - q.t)
+  // The step running right now is the agent's current activity.
+  const last = events.at(-1)
+  if (last?.k === 'tool' && agent?.activity?.at === last.t && ['working', 'shell'].includes(look(agent))) last.status = 'run'
+  return {
+    events,
+    total: events.length,
+    ticks: events.map((e) => [e.t, e.k === 'tool' ? (e.status === 'err' ? 'err' : 'tool') : e.k]),
+    files: [...files.values()].sort((p, q) => q.at - p.at),
+    startedAt: events[0]?.t ?? agent?.startedAt ?? null,
+    model: agent?.model,
+    context: demo ? Math.min(agent?.stats?.tokensIn ?? 0, 640_000) : 0,
+    historyOnly: !demo,
+  }
 }
 
 // ─── Header: agent picker ───────────────────────────────────────────────────
