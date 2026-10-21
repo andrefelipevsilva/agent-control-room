@@ -51,6 +51,18 @@ Depois clique duas vezes no **`start.cmd`** (Windows), ou rode `npm start`. A sa
 
 `Ctrl+C` (ou fechar a janela) para a sala e as ferramentas que ela ligou. Um container Docker do Habblaud continua ligado, como já acontece normalmente.
 
+### Ou deixe o Claude Code instalar
+
+Cole isto no Claude Code e ele baixa, confere o Node e abre a sala para você:
+
+```text
+Instale e abra o Agent Control Room (github.com/andrefelipevsilva/agent-control-room) no meu computador:
+1. Confira se tenho o Node.js 22.12 ou mais novo (node -v). Se não tiver, me mostre como instalar pelo nodejs.org e pare aqui.
+2. Baixe o repositório para a minha pasta pessoal com git clone https://github.com/andrefelipevsilva/agent-control-room.git (sem git, baixe e descompacte o ZIP do main).
+3. Abra a sala numa janela própria, para ela continuar rodando depois que você terminar: no Windows, o start.cmd da pasta pelo caminho completo; no Mac ou Linux, npm start dentro da pasta.
+4. Quando abrir, me passe o endereço http://localhost:4800/control-room/
+```
+
 ### Já usa o Habblaud com Docker?
 
 A sala acha. Se algo já responde na porta do Habblaud ou do Agent Flow, a sala usa como está. Se o Docker estiver rodando e o container `habblaud` existir, a sala liga esse container no lugar do build empacotado. `HABBLAUD_MODE=docker` ou `HABBLAUD_MODE=bundled` escolhe um dos dois.

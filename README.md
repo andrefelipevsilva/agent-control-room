@@ -51,6 +51,18 @@ Then double-click **`start.cmd`** (Windows), or run `npm start`. The room opens 
 
 `Ctrl+C` (or closing the window) stops the room and the tools it started. A Habblaud Docker container stays on, as it normally does.
 
+### Or let Claude Code install it
+
+Paste this into Claude Code and it downloads the room, checks Node and opens it for you:
+
+```text
+Install and open Agent Control Room (github.com/andrefelipevsilva/agent-control-room) on my computer:
+1. Check that I have Node.js 22.12 or newer (node -v). If not, show me how to install it from nodejs.org and stop here.
+2. Download the repository into my home folder with git clone https://github.com/andrefelipevsilva/agent-control-room.git (without git, download and unzip the main ZIP).
+3. Open the room in its own window, so it keeps running after you finish: on Windows, the folder's start.cmd by its full path; on macOS or Linux, npm start inside the folder.
+4. When it opens, give me the address http://localhost:4800/control-room/
+```
+
 ### Already using Habblaud with Docker?
 
 The room finds it. If something already answers on Habblaud's or Agent Flow's port, the room uses it as is. If Docker is running and Habblaud's `habblaud` container exists, the room starts that container instead of the bundled build. `HABBLAUD_MODE=docker` or `HABBLAUD_MODE=bundled` picks one for you.
