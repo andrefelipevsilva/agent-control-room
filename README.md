@@ -4,7 +4,7 @@
 
 [Leia em português](README.pt-BR.md)
 
-![Agent Control Room: Habblaud and Agent Flow following the same Claude Code session, through the side-by-side, stacked and floating layouts](docs/demo.gif)
+![Agent Control Room: the vector office and Agent Flow's graph following the same Claude Code session while it runs a subagent, then Habblaud's world, the stacked and floating layouts and the sidebar](docs/demo.gif)
 
 - **The office** shows *who* is working and *how they are*: each state has its own gesture (lime ring and code on the screens while working, a thought bubble while thinking, a raised hand and an orange ring when it needs you, a red screen on an error) and idle agents leave the desk for the kitchen. The **Habblaud** button swaps it for Habblaud's living pixel-art world, where agents walk around, play ping-pong and make friends and rivals.
 - **The flow** shows *what* they do, with real numbers from the session file: context used, cost, `+/-` lines per edit, how long each command took, tools and tokens of each subagent. Tabs for **Files**, **Chat** and **Cost**, and **Agent Flow** for Agent Flow's original node graph.

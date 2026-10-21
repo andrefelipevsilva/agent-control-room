@@ -4,7 +4,7 @@
 
 [Read in English](README.md)
 
-![Agent Control Room: Habblaud e Agent Flow acompanhando a mesma sessão do Claude Code, nos layouts lado a lado, empilhado e flutuante](docs/demo.gif)
+![Agent Control Room: o escritório vetorial e o grafo do Agent Flow acompanhando a mesma sessão do Claude Code enquanto ela roda um subagente, depois o mundo do Habblaud, os layouts empilhado e flutuante e a barra lateral](docs/demo.gif)
 
 - O **escritório** mostra *quem* está trabalhando e *como está*: cada estado tem um gesto (anel lime e código na tela trabalhando, balão de reticências pensando, mão levantada e anel laranja quando precisa de você, tela vermelha num erro), e quem está ocioso sai da mesa e vai para a copa. O botão **Habblaud** troca pelo mundo vivo em pixel art do Habblaud, onde os agentes andam pelo prédio, jogam pingue-pongue e fazem amizades e rivalidades.
 - O **fluxo** mostra *o que* eles fazem, com os números reais do arquivo da sessão: contexto usado, custo, `+/-` linhas em cada edição, quanto tempo cada comando levou, ferramentas e tokens de cada subagente. Abas **Arquivos**, **Chat** e **Custo**, e a aba **Agent Flow** com o grafo original do Agent Flow.
