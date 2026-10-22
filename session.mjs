@@ -73,6 +73,7 @@ export function locate(configDir, sessionId, subagentId = null) {
 function freshState(file) {
   return {
     file,
+    subagent: path.basename(path.dirname(file)) === 'subagents',
     offset: 0,
     partial: '',
     rev: 0,
@@ -243,7 +244,8 @@ function ingest(st, line) {
     if (typeof o.totalLinesRemoved === 'number') st.linesRemoved = o.totalLinesRemoved
     return
   }
-  if (o.isSidechain || (o.type !== 'user' && o.type !== 'assistant')) return
+  // A subagent's own file is all sidechain; in a main transcript, sidechain lines belong to subagents.
+  if ((o.isSidechain && !st.subagent) || (o.type !== 'user' && o.type !== 'assistant')) return
   const msg = o.message ?? {}
   const t = at ?? Date.now()
 

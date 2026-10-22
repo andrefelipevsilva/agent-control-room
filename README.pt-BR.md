@@ -1,12 +1,12 @@
 # Agent Control Room
 
-**Uma tela só para ver seus agentes do Claude Code ao vivo.** À esquerda, um escritório com uma mesa para cada agente e uma sala para cada projeto. À direita, a sessão do agente selecionado como um git graph: suas mensagens, o raciocínio, cada ferramenta, os subagentes saindo num branch e voltando. Feito em cima do [Habblaud](https://github.com/marmottajr/habblaud) e do [Agent Flow](https://github.com/patoles/agent-flow), e as telas originais dos dois ficam a um clique.
+**Uma tela só para ver seus agentes do Claude Code ao vivo.** À esquerda, um escritório com uma sala para cada projeto e uma mesa para cada agente, e cada agente é uma capivara em pixel art com a sua roupa. À direita, a sessão do agente selecionado como um git graph: suas mensagens, o raciocínio, cada ferramenta, os subagentes saindo num branch e voltando. Feito em cima do [Habblaud](https://github.com/marmottajr/habblaud) e do [Agent Flow](https://github.com/patoles/agent-flow), e as telas originais dos dois ficam a um clique.
 
 [Read in English](README.md)
 
-![Agent Control Room: o escritório vetorial e o grafo do Agent Flow acompanhando a mesma sessão do Claude Code enquanto ela roda um subagente, depois o mundo do Habblaud, os layouts empilhado e flutuante e a barra lateral](docs/demo.gif)
+![Agent Control Room: capivaras em pixel art trabalhando no escritório enquanto o fluxo desenha a mesma sessão do Claude Code como git graph e um subagente sai num branch, depois as abas Arquivos e Custo, os layouts empilhado e flutuante e a barra lateral](docs/control-room.gif)
 
-- O **escritório** mostra *quem* está trabalhando e *como está*: cada estado tem um gesto (anel lime e código na tela trabalhando, balão de reticências pensando, mão levantada e anel laranja quando precisa de você, tela vermelha num erro), e quem está ocioso sai da mesa e vai para a copa. O botão **Habblaud** troca pelo mundo vivo em pixel art do Habblaud, onde os agentes andam pelo prédio, jogam pingue-pongue e fazem amizades e rivalidades.
+- O **escritório** mostra *quem* está trabalhando e *como está*: cada capivara tem a sua roupa e o seu chapéu (gorro, boné, fone, laranja ou um pintinho na cabeça), e cada estado tem um gesto (anel lime e código na tela trabalhando, balão de reticências pensando, pata levantada e anel laranja quando precisa de você, tela vermelha num erro), e quem está ocioso sai da mesa e vai para a copa. O botão **Habblaud** troca pelo mundo vivo em pixel art do Habblaud, onde os agentes andam pelo prédio, jogam pingue-pongue e fazem amizades e rivalidades.
 - O **fluxo** mostra *o que* eles fazem, com os números reais do arquivo da sessão: contexto usado, custo, `+/-` linhas em cada edição, quanto tempo cada comando levou, ferramentas e tokens de cada subagente. Abas **Arquivos**, **Chat** e **Custo**, e a aba **Agent Flow** com o grafo original do Agent Flow.
 - A **barra lateral** põe no topo quem precisa de você (com o comando esperando aprovação), lista projetos e agentes e mostra os limites de 5 horas e da semana de cada conta.
 

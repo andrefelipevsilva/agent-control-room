@@ -1,120 +1,292 @@
-// Vector characters for the office and the avatars around the app: skin, hair, hair style and top color come from
-// the agent's Habblaud seed (or the parts chosen in Habblaud's character editor), so each agent looks the same
-// everywhere and stays the same across restarts.
+// Pixel-art capybaras for the office and the avatars around the app, each in its own outfit. Fur shade, outfit, colors
+// and what it wears on its head come from the agent's Habblaud seed (the outfit color from the parts chosen in
+// Habblaud's character editor, when there are any), so each agent looks the same everywhere and stays the same across
+// restarts. A sprite is a base drawing plus layers (outfit, hat, arms) of one-letter colors, drawn as crisp rects.
 
 import { rng, pick } from './util.js'
 
-const SKIN = ['#f0c7a2', '#e3b48c', '#d9a27c', '#c68e65', '#a8714b', '#8d5a3b', '#6e4630']
-const HAIR = ['#2a1f1a', '#1a1412', '#3b2a1f', '#6b4a2f', '#b07a45', '#8a8f99', '#c9a15e', '#4a2a1f']
-const TOPS = ['#3d4a63', '#5a4a72', '#7a4a3a', '#2f5a4c', '#44505f', '#6b4a2f', '#4b5d7a', '#6a3f52', '#36574f']
-const STYLES_F = ['long', 'bun', 'ponytail', 'bob', 'curly', 'long']
-const STYLES_M = ['short', 'short', 'bald', 'curly', 'short', 'bun']
+const FUR = ['#b5835a', '#a87650', '#c08f63', '#9d6b46', '#b98a5e', '#c99a6b']
+const TOPS = ['#4a6fa5', '#7b5ea7', '#3f8f7a', '#a5484f', '#4f7f4a', '#a8577f', '#5c6b7a', '#2f4a7c', '#b0893a']
+const ACCENTS = ['#f3efe4', '#e26d6d', '#6fa8e8', '#e7c45a', '#d48fd8', '#7fd1b9', '#f29fb8']
+const OUTFITS = ['hoodie', 'tee', 'suit', 'overalls', 'stripes', 'scarf', 'labcoat', 'jacket']
+const HATS = ['none', 'beanie', 'cap', 'bow', 'orange', 'headphones', 'duck', 'flower']
+const HEX = /^#[0-9a-f]{6}$/i
 
-const HAIR_FROM_PART = {
-  short: 'short', buzz: 'short', spiky: 'short', side_part: 'short', mohawk: 'short', wavy: 'short',
-  curly: 'curly', afro: 'curly', bob: 'bob', long: 'long', ponytail: 'ponytail', pigtails: 'ponytail',
-  bun: 'bun', bald: 'bald',
+/** Mixes a #rrggbb color toward black (amount < 0) or white (amount > 0). */
+function shade(hex, amount) {
+  const n = parseInt(hex.slice(1), 16)
+  const to = amount < 0 ? 0 : 255
+  const k = Math.abs(amount)
+  const ch = (v) => Math.round(v + (to - v) * k).toString(16).padStart(2, '0')
+  return `#${ch(n >> 16)}${ch((n >> 8) & 255)}${ch(n & 255)}`
 }
 
-const cache = new Map()
+const looks = new Map()
 
-/** The agent's look: { skin, hair, top, style, beard }. */
+/** The agent's look: fur, outfit and its colors, and what it wears on its head. */
 export function appearance(agent) {
   const key = `${agent.seed}|${agent.look}|${JSON.stringify(agent.parts ?? null)}`
-  let ap = cache.get(key)
+  let ap = looks.get(key)
   if (ap) return ap
   const r = rng(agent.seed ?? 1)
-  const p = agent.parts ?? {}
-  const female = agent.look === 'f'
-  ap = {
-    skin: p.skin ?? pick(r, SKIN),
-    hair: p.hair ?? pick(r, HAIR),
-    top: p.top ?? pick(r, TOPS),
-    style: HAIR_FROM_PART[p.hairStyle] ?? pick(r, female ? STYLES_F : STYLES_M),
-    beard: p.facialHair ? p.facialHair !== 'none' : !female && r() < 0.3,
-  }
-  cache.set(key, ap)
+  const fur = pick(r, FUR)
+  const top = HEX.test(agent.parts?.top ?? '') ? agent.parts.top : pick(r, TOPS)
+  ap = { key, fur, top, accent: pick(r, ACCENTS), outfit: pick(r, OUTFITS), hat: pick(r, HATS) }
+  looks.set(key, ap)
   return ap
 }
 
-const TOP_HAIR = 'M8.6 13.2C8.4 8.6 11.3 6 15 6S21.6 8.6 21.4 13.2C20.3 10.6 18.2 9.6 15 9.6S9.7 10.6 8.6 13.2Z'
-
-/** Head-and-shoulders avatar, 30×30 viewBox. */
-export function bust(ap) {
-  const { skin, hair, top, style, beard } = ap
-  let back = ''
-  let front = `<path d="${TOP_HAIR}" fill="${hair}"/>`
-  if (style === 'long') back = `<path d="M8.2 14C7.8 8.4 11 5.6 15 5.6S22.2 8.4 21.8 14L22.6 23H19.4L19.8 13.6C18.6 10.8 17 10 15 10S11.4 10.8 10.2 13.6L10.6 23H7.4Z" fill="${hair}"/>`
-  if (style === 'bob') back = `<path d="M8.2 14C7.8 8.4 11 5.6 15 5.6S22.2 8.4 21.8 14L22 19.5H19.6L19.8 13.6C18.6 10.8 17 10 15 10S11.4 10.8 10.2 13.6L10.4 19.5H8Z" fill="${hair}"/>`
-  if (style === 'ponytail') back = `<path d="M20.5 9.5C24.5 11 25 17 23 21C22.6 17 21.6 13.6 19.6 12Z" fill="${hair}"/>`
-  if (style === 'bun') {
-    back = `<circle cx="15" cy="5.2" r="3.4" fill="${hair}"/>`
-    front = `<path d="M8.5 13.6C8.2 8.6 11.2 5.8 15 5.8S21.8 8.6 21.5 13.6C20.4 10.6 18.2 9.4 15 9.4S9.6 10.6 8.5 13.6Z" fill="${hair}"/>`
+/** One-letter colors used by the sprites. */
+function palette(ap) {
+  const body = ap.outfit === 'overalls' ? ap.accent : ap.outfit === 'labcoat' ? '#e9ecef' : ap.top
+  return {
+    o: '#2e1d12', // outline
+    f: ap.fur,
+    h: shade(ap.fur, 0.12),
+    d: shade(ap.fur, -0.32),
+    s: shade(ap.fur, -0.14), // snout
+    n: '#1e130c', // eyes, nostrils
+    p: '#e58c80', // blush
+    B: body,
+    D: shade(body, -0.3),
+    t: ap.top,
+    L: shade(ap.top, 0.4),
+    a: ap.accent,
+    A: shade(ap.accent, -0.28),
+    k: '#eef0f2',
+    C: '#c3c8ce',
+    y: '#f7a531',
+    Y: '#ffd58a',
+    g: '#5fae4a',
+    m: '#e6e8eb',
+    u: '#f5d84a', // duck
+    q: '#f08a2b', // its beak
+    G: ap.outfit === 'overalls' ? ap.top : ap.outfit === 'suit' ? shade(ap.top, -0.3) : shade(ap.fur, -0.1), // legs
   }
-  if (style === 'curly') front = [[9.4, 11.4], [10.8, 8], [14.8, 6.4], [19, 8], [20.6, 11.4], [12.6, 6.8], [17.2, 6.8]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.7" fill="${hair}"/>`).join('')
-  if (style === 'bald') front = ''
-  const beardPath = beard ? `<path d="M9.6 15C10.3 19.2 12.8 20.6 15 20.6S19.7 19.2 20.4 15C19.2 17 17.2 17.6 15 17.6S10.8 17 9.6 15Z" fill="${hair}"/>` : ''
-  return (
-    `<svg viewBox="0 0 30 30" aria-hidden="true">${back}` +
-    `<path d="M4 31C4.5 23 25.5 23 26 31Z" fill="${top}"/>` +
-    `<rect x="12.5" y="17" width="5" height="5" rx="2" fill="${skin}"/>` +
-    `<circle cx="15" cy="13" r="6.3" fill="${skin}"/>${front}${beardPath}</svg>`
-  )
+}
+
+// ─── Drawings ───────────────────────────────────────────────────────────────
+// '.' leaves what is under it, any other letter paints a pixel (see palette()).
+
+/**
+ * The head from the front, 10×12, long like a capybara's. The hats below start one row above the head and are drawn
+ * as if the head sat at (3, 1) of a 16×16 grid.
+ */
+const HEAD = [
+  '.oo....oo.',
+  'oddooooddo',
+  'offhhhhffo',
+  'offffffffo',
+  'ofnffffnfo',
+  'ofnffffnfo',
+  'offffffffo',
+  'opsssssspo',
+  'ossnssnsso',
+  'osssssssso',
+  'osssddssso',
+  '.oooooooo.',
+]
+
+const FRONT_HAT = {
+  beanie: ['.......AA.......', '....oooooooo....', '...oaaaaaaaao...', '...oaaaaaaaao...', '...oAAAAAAAAo...'],
+  cap: ['.....oooooo.....', '....oaaaaaao....', '...oaaaaaaaao...', '...oaaaaaaaao...', '..oAAAAAAAAAAo..'],
+  bow: ['................', '.........aa.aa..', '.........aaAaa..', '.........aa.aa..'],
+  orange: ['.......og.......', '......oyyo......', '.....oyYyyo.....', '.....oyyyyo.....', '......oooo......'],
+  headphones: ['................', '..oooooooooooo..', '.oaaaaaaaaaaaao.', '.oa..........ao.', '.oa..........ao.', 'oAAo........oAAo', 'oAAo........oAAo', 'oAAo........oAAo', '.oo..........oo.'],
+  duck: ['.......ooo......', '......ouunq.....', '.....ouuuuo.....', '.....ouuuuo.....', '......oooo......'],
+  flower: ['................', '....a...........', '...aYa..........', '....a...........'],
+}
+
+const BUST = [
+  '................',
+  ...HEAD.map((r) => `...${r}...`),
+  '...oBBBBBBBBo...',
+  '..oBBBBBBBBBBo..',
+  '.oBBBBBBBBBBBBo.',
+]
+// Rows 13–15 of the bust.
+const BUST_OUTFIT = {
+  hoodie: ['...oDDDDDDDDo...', '..oBBBkBBkBBBo..', '.oBBBBkBBkBBBBo.'],
+  tee: ['...oBBffffBBo...'],
+  suit: ['...oDkkaakkDo...', '..oBBDkaakDBBo..', '.oBBBBDaaDBBBBo.'],
+  overalls: ['...oBtBBBBtBo...', '..oBBttttttBBo..', '.oBBBtLttLtBBBo.'],
+  stripes: ['...oaaaaaaaao...', '................', '.oaaaaaaaaaaaao.'],
+  scarf: ['...oaaaaaaaao...', '..oBBBBBBaABBo..', '.oBBBBBBBaABBBo.'],
+  labcoat: ['...oCttttttCo...', '..oBBCttttCBBo..', '.oBBBBCttCBBaBo.'],
+  jacket: ['...oDDDDDDDDo...', '..oaBBBLLBBBao..', '.oaBBBBLLBBBBao.'],
+}
+
+/** Standing, from the front, 14 wide: the head sits at (2, 3). */
+const STAND = [
+  '..............',
+  '..............',
+  '..............',
+  ...HEAD.map((r) => `..${r}..`),
+  '..oBBBBBBBBo..',
+  '.oBBBBBBBBBBo.',
+  'oBoBBBBBBBBoBo',
+  'oBoBBBBBBBBoBo',
+  'oBoBBBBBBBBoBo',
+  'odoBBBBBBBBodo',
+  '.ooBBBBBBBBoo.',
+  '..oBBBBBBBBo..',
+  '..oooooooooo..',
+  '...oGGooGGo...',
+  '..odddoodddo..',
+  '..oooooooooo..',
+]
+// Rows 15–22 of the standing body.
+const STAND_OUTFIT = {
+  hoodie: ['..oDDDDDDDDo..', '.oBBBkBBkBBBo.', 'oBoBBkBBkBBoBo', '..............', '..............', 'odoBDDDDDDBodo', '.ooBDDDDDDBoo.'],
+  tee: ['..oBBffffBBo..'],
+  suit: ['..oDkkaakkDo..', '.oBBDkaakDBBo.', 'oBoBBDaaDBBoBo', 'oBoBBBDDBBBoBo'],
+  overalls: ['..oBtBBBBtBo..', '.oBBtBBBBtBBo.', 'oBoBttttttBoBo', 'oBoBtLttLtBoBo', 'oBoBttttttBoBo', 'odottttttttodo', '.oottttttttoo.', '..otttttttto..'],
+  stripes: ['..............', '.oaaaaaaaaaao.', '..............', 'oBoaaaaaaaaoBo', '..............', 'odoaaaaaaaaodo', '..............', '..oaaaaaaaao..'],
+  scarf: ['..oaaaaaaaao..', '.oBBBBBaABBBo.', 'oBoBBBBaABBoBo'],
+  labcoat: ['..oCttttttCo..', '.oBBCttttCBBo.', 'oBoBBCttCBBoBo', 'oBoBBBCCBaBoBo', 'oBoBBBCCBBBoBo', 'odoBBBCCBBBodo', '.ooBBBCCBBBoo.', '..oBBBCCBBBo..'],
+  jacket: ['..oDDDDDDDDo..', '.oBBBBLLBBBBo.', 'oBoBBBLLBBBoBo', 'oaoBBBLLBBBoao', 'oaoBBBLLBBBoao', 'odoBBBLLBBBodo', '.ooBBBLLBBBoo.', '..oBBBLLBBBo..'],
+}
+const CUP = ['.C.C', 'C.C.', 'oooo', 'ommo', 'ommo', 'oooo']
+
+/** Seated at a desk, from behind, 18 wide: rows 0–3 hold a raised paw, the head starts at row 4. */
+const SEAT = [
+  '..................',
+  '..................',
+  '..................',
+  '..................',
+  '....oo......oo....',
+  '...oddooooooddo...',
+  '...offhhhhhhffo...',
+  '...offffffffffo...',
+  '...offffffffffo...',
+  '...offffffffffo...',
+  '...offffffffffo...',
+  '...offffffffffo...',
+  '...oddffffffddo...',
+  '....oddddddddo....',
+  '..oBBBBBBBBBBBBo..',
+  '.oBBBBBBBBBBBBBBo.',
+  'oBBBBBBBBBBBBBBBBo',
+  'oBBBBBBBBBBBBBBBBo',
+]
+// From row 13 of the seated grid (the chair's back hides the body below row 16).
+const SEAT_OUTFIT = {
+  hoodie: ['..................', '..oBDDDDDDDDDDBo..', '.oBBBDDDDDDDDBBBo.', 'oBBBBBDDDDDDBBBBBo'],
+  overalls: ['..................', '..oBBtBBBBBBtBBo..', '.oBBBBtBBBBtBBBBo.', 'oBBBBBBtBBtBBBBBBo', 'oBBBBBBBttBBBBBBBo'],
+  stripes: ['..................', '..................', '.oaaaaaaaaaaaaaao.', '..................', 'oaaaaaaaaaaaaaaaao'],
+  scarf: ['....oaaaaaaaao....', '..oBBBBBBBaABBBo..', '.oBBBBBBBBaABBBBo.'],
+  suit: ['..................', '..oBBDDDDDDDDBBo..', '.oBBBBBBDDBBBBBBo.', 'oBBBBBBBDDBBBBBBBo'],
+  jacket: ['..................', '..oBBDDDDDDDDBBo..'],
+  labcoat: ['..................', '..................', '.oBBBBBBCCBBBBBBo.', 'oBBBBBBBCCBBBBBBBo'],
+}
+// From row 1 of the seated grid.
+const BACK_HAT = {
+  beanie: ['..................', '..................', '........AA........', '....oooooooooo....', '...oaaaaaaaaaao...', '...oaaaaaaaaaao...', '...oaaaaaaaaaao...', '...oAAAAAAAAAAo...'],
+  cap: ['..................', '..................', '......AAAAAA......', '.....oaaaaaao.....', '....oaaaaaaaao....', '...oaaaaffaaaao...', '...oAAAAffAAAAo...'],
+  bow: ['..................', '..................', '...........aa.aa..', '...........aaAaa..', '...........aa.aa..'],
+  orange: ['........og........', '.......oyyo.......', '......oyYyyo......', '......oyyyyo......', '.......oooo.......'],
+  headphones: ['..................', '..................', '..................', '...oooooooooooo...', '..oaaaaaaaaaaaao..', '..oa..........ao..', '..oa..........ao..', '...AA........AA...', '...AA........AA...'],
+  flower: ['..................', '..................', '....a.............', '...aYa............', '....a.............'],
+  duck: ['..................', '........ooo.......', '.......ouuuo......', '......ouuuuuo.....', '......ouuuuuo.....', '.......ooooo......'],
+}
+// Paws on the desk's edge from row 8, sleeves in shadow; the raised right paw reaches row 0.
+const ARM_LEFT = ['.oo.', 'offo', 'oDDo', 'oDDo', 'oDDo', 'oDDo', 'oDDB', 'oDDB']
+const ARM_RIGHT = ['.oo.', 'offo', 'oDDo', 'oDDo', 'oDDo', 'oDDo', 'BDDo', 'BDDo']
+const ARM_RAISED = ['.oo.', 'offo', ...Array(12).fill('oDDo'), 'BDDo', 'BDDo']
+
+// ─── Drawing ────────────────────────────────────────────────────────────────
+
+/** Paints layers ({ x, y, rows }) onto one pixel map, later layers on top. */
+function compose(layers) {
+  const px = new Map()
+  for (const { x = 0, y = 0, rows } of layers) {
+    rows.forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) if (row[i] !== '.') px.set(`${x + i},${y + j}`, row[i])
+    })
+  }
+  return px
+}
+
+/**
+ * Pixel map → one path per color (runs of a row merged), each pixel `size` wide, the grid's (0, 0) at (ox, oy).
+ * A single path per color keeps zoomed sprites free of hairline seams between rows.
+ */
+function toPaths(px, pal, ox, oy, size) {
+  const byColor = new Map()
+  for (const [k, c] of px) {
+    const [x, y] = k.split(',').map(Number)
+    if (!byColor.has(c)) byColor.set(c, new Map())
+    const rows = byColor.get(c)
+    if (!rows.has(y)) rows.set(y, [])
+    rows.get(y).push(x)
+  }
+  let s = ''
+  for (const [c, rows] of byColor) {
+    let d = ''
+    for (const [y, xs] of rows) {
+      xs.sort((p, q) => p - q)
+      for (let i = 0; i < xs.length; ) {
+        let j = i
+        while (j + 1 < xs.length && xs[j + 1] === xs[j] + 1) j++
+        d += `M${ox + xs[i] * size} ${oy + y * size}h${(j - i + 1) * size}v${size}h${-(j - i + 1) * size}z`
+        i = j + 1
+      }
+    }
+    s += `<path d="${d}" fill="${pal[c]}"/>`
+  }
+  return s
+}
+
+const drawn = new Map()
+function memo(key, make) {
+  let s = drawn.get(key)
+  if (s == null) {
+    s = make()
+    drawn.set(key, s)
+  }
+  return s
+}
+
+const hatLayer = (hat, x, y) => (FRONT_HAT[hat] ? [{ x, y, rows: FRONT_HAT[hat] }] : [])
+
+/** Head-and-shoulders avatar, 16×16 pixels. */
+export function bust(ap) {
+  const body = memo(`bust|${ap.key}`, () => {
+    const layers = [{ rows: BUST }]
+    if (BUST_OUTFIT[ap.outfit]) layers.push({ y: 13, rows: BUST_OUTFIT[ap.outfit] })
+    layers.push(...hatLayer(ap.hat, 0, 0))
+    return toPaths(compose(layers), palette(ap), 0, 0, 1)
+  })
+  return `<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">${body}</svg>`
 }
 
 /**
  * Agent seated at a desk, seen from behind, in the desk's own coordinates (the desk is 76 wide, the chair sits under
- * it at y≈31–53). pose: 'type' (hands on the keyboard) or 'raise' (one hand up: needs you).
+ * it at y≈31–53). pose: 'type' (paws on the keyboard) or 'raise' (one paw up: needs you).
  */
 export function seated(ap, pose = 'type') {
-  const { skin, hair, top, style } = ap
-  let behind = ''
-  if (style === 'long') behind = `<path d="M38 12C26 12 25 34 28 44H48C51 34 50 12 38 12Z" fill="${hair}"/>`
-  if (style === 'bob') behind = `<path d="M38 12C28 12 27 25 29 31H47C49 25 48 12 38 12Z" fill="${hair}"/>`
-  const arms =
-    pose === 'raise'
-      ? `<path d="M26 34L29.5 16.5" stroke="${top}" stroke-width="5.5" stroke-linecap="round"/><circle cx="29.5" cy="15.6" r="2.6" fill="${skin}"/>` +
-        `<path d="M50 33L57 3" stroke="${top}" stroke-width="5.5" stroke-linecap="round"/><circle cx="57.6" cy="0.5" r="3" fill="${skin}"/>`
-      : `<path d="M26 34L29.5 16.5M50 34L46.5 16.5" stroke="${top}" stroke-width="5.5" stroke-linecap="round"/>` +
-        `<circle cx="29.5" cy="15.6" r="2.6" fill="${skin}"/><circle cx="46.5" cy="15.6" r="2.6" fill="${skin}"/>`
-  let head = `<circle cx="38" cy="21.5" r="8.5" fill="${style === 'bald' ? skin : hair}"/>`
-  if (style === 'curly') head = `<circle cx="38" cy="21" r="9.2" fill="${hair}"/>` + [[31, 17.5], [45, 17.5], [34.5, 13.5], [41.5, 13.5]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.2" fill="${hair}"/>`).join('')
-  if (style === 'bun') head += `<circle cx="38" cy="11.5" r="4.2" fill="${hair}"/>`
-  if (style === 'ponytail') head += `<path d="M36 27Q37.5 34 36.6 38Q40.4 34 40 27Z" fill="${hair}"/>`
-  if (style === 'long') head += `<path d="M30 20C30 30 33 36 38 36S46 30 46 20Z" fill="${hair}"/>`
-  return (
-    behind +
-    `<ellipse cx="38" cy="38" rx="15.5" ry="8.5" fill="${top}"/>${arms}` +
-    `<rect x="35" y="27" width="6" height="5" rx="2" fill="${skin}"/>${head}` +
-    `<circle cx="29.6" cy="22.5" r="2" fill="${skin}"/><circle cx="46.4" cy="22.5" r="2" fill="${skin}"/>`
-  )
+  return memo(`seat|${pose}|${ap.key}`, () => {
+    const layers = [{ rows: SEAT }]
+    if (SEAT_OUTFIT[ap.outfit]) layers.push({ y: 13, rows: SEAT_OUTFIT[ap.outfit] })
+    if (BACK_HAT[ap.hat]) layers.push({ y: 1, rows: BACK_HAT[ap.hat] })
+    layers.push({ x: 0, y: 8, rows: ARM_LEFT })
+    layers.push(pose === 'raise' ? { x: 14, y: 0, rows: ARM_RAISED } : { x: 14, y: 8, rows: ARM_RIGHT })
+    return `<g shape-rendering="crispEdges">${toPaths(compose(layers), palette(ap), 20, 1, 2)}</g>`
+  })
 }
 
-/** Agent standing, seen from behind, feet at (0, 0). prop: 'cup' holds a coffee. */
+/** Agent standing, facing us, feet at (0, 0). prop: 'cup' holds a coffee. */
 export function standing(ap, prop = null) {
-  const { skin, hair, top, style } = ap
-  const leftArm = `<rect x="-13" y="-34" width="5" height="17" rx="2.5" fill="${top}"/><circle cx="-10.5" cy="-16.5" r="2.4" fill="${skin}"/>`
-  const rightArm =
-    prop === 'cup'
-      ? `<rect x="8" y="-34" width="5" height="12" rx="2.5" fill="${top}"/><rect x="9" y="-30" width="7" height="8" rx="1.5" fill="#e6e8eb"/>` +
-        `<circle cx="11" cy="-22.5" r="2.4" fill="${skin}"/>` +
-        `<path d="M11 -33C9.5 -35 12.5 -36.5 11 -39M14.5 -33C13 -35 16 -36.5 14.5 -39" stroke="#c9cdd3" stroke-width="0.9" fill="none" opacity="0.5"/>`
-      : `<rect x="8" y="-34" width="5" height="17" rx="2.5" fill="${top}"/><circle cx="10.5" cy="-16.5" r="2.4" fill="${skin}"/>`
-  let hairBack = ''
-  if (style === 'long') hairBack = `<path d="M-8.5 -46Q-9.5 -30 -7 -26H7Q9.5 -30 8.5 -46Z" fill="${hair}"/>`
-  if (style === 'bob') hairBack = `<path d="M-8.5 -46Q-9 -36 -7.5 -33H7.5Q9 -36 8.5 -46Z" fill="${hair}"/>`
-  let head = `<circle cx="0" cy="-45" r="8.5" fill="${style === 'bald' ? skin : hair}"/>`
-  if (style === 'curly') head = `<circle cx="0" cy="-45.5" r="9.2" fill="${hair}"/>` + [[-7, -49], [7, -49], [-3.5, -53], [3.5, -53]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.2" fill="${hair}"/>`).join('')
-  if (style === 'bun') head += `<circle cx="0" cy="-55" r="4.2" fill="${hair}"/>`
-  if (style === 'ponytail') head += `<path d="M-2 -40Q-0.5 -32 -1.4 -28Q2.4 -32 2 -40Z" fill="${hair}"/>`
-  return (
-    `<ellipse cx="0" cy="0" rx="9" ry="2.6" fill="#000" opacity="0.45"/>` +
-    `<rect x="-6.5" y="-14" width="5.5" height="14" rx="2.2" fill="#2a2f37"/><rect x="1" y="-14" width="5.5" height="14" rx="2.2" fill="#2a2f37"/>` +
-    hairBack +
-    `<rect x="-10" y="-36" width="20" height="25" rx="7" fill="${top}"/>${leftArm}${rightArm}` +
-    `<rect x="-3" y="-40" width="6" height="5" rx="2" fill="${skin}"/>${head}` +
-    `<circle cx="-8.3" cy="-44" r="2" fill="${skin}"/><circle cx="8.3" cy="-44" r="2" fill="${skin}"/>`
-  )
+  return memo(`stand|${prop}|${ap.key}`, () => {
+    const layers = [{ rows: STAND }]
+    if (STAND_OUTFIT[ap.outfit]) layers.push({ y: 15, rows: STAND_OUTFIT[ap.outfit] })
+    layers.push(...hatLayer(ap.hat, -1, 2))
+    if (prop === 'cup') layers.push({ x: 13, y: 16, rows: CUP })
+    return (
+      `<ellipse cx="0" cy="0" rx="12" ry="3" fill="#000" opacity="0.4"/>` +
+      `<g shape-rendering="crispEdges">${toPaths(compose(layers), palette(ap), -14, -54, 2)}</g>`
+    )
+  })
 }
 
 /** Avatar markup for lists: a round bust with a status ring. */

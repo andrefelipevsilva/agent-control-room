@@ -1,12 +1,12 @@
 # Agent Control Room
 
-**One screen to watch your Claude Code agents live.** On the left, an office with a desk for each agent and a room for each project. On the right, the selected agent's session as a git graph: your messages, its thinking, every tool call, subagents branching off and coming back. Built on [Habblaud](https://github.com/marmottajr/habblaud) and [Agent Flow](https://github.com/patoles/agent-flow), whose own views are one click away.
+**One screen to watch your Claude Code agents live.** On the left, an office with a room for each project and a desk for each agent, every agent a pixel-art capybara in its own outfit. On the right, the selected agent's session as a git graph: your messages, its thinking, every tool call, subagents branching off and coming back. Built on [Habblaud](https://github.com/marmottajr/habblaud) and [Agent Flow](https://github.com/patoles/agent-flow), whose own views are one click away.
 
 [Leia em português](README.pt-BR.md)
 
-![Agent Control Room: the vector office and Agent Flow's graph following the same Claude Code session while it runs a subagent, then Habblaud's world, the stacked and floating layouts and the sidebar](docs/demo.gif)
+![Agent Control Room: pixel-art capybaras at work in the office while the flow draws the same Claude Code session as a git graph and a subagent branches off, then the Files and Cost tabs, the stacked and floating layouts and the sidebar](docs/control-room.gif)
 
-- **The office** shows *who* is working and *how they are*: each state has its own gesture (lime ring and code on the screens while working, a thought bubble while thinking, a raised hand and an orange ring when it needs you, a red screen on an error) and idle agents leave the desk for the kitchen. The **Habblaud** button swaps it for Habblaud's living pixel-art world, where agents walk around, play ping-pong and make friends and rivals.
+- **The office** shows *who* is working and *how they are*: each capybara keeps its own outfit and hat (a beanie, a cap, headphones, an orange or a chick on its head), and each state has its own gesture (lime ring and code on the screens while working, a thought bubble while thinking, a raised paw and an orange ring when it needs you, a red screen on an error) and idle agents leave the desk for the kitchen. The **Habblaud** button swaps it for Habblaud's living pixel-art world, where agents walk around, play ping-pong and make friends and rivals.
 - **The flow** shows *what* they do, with real numbers from the session file: context used, cost, `+/-` lines per edit, how long each command took, tools and tokens of each subagent. Tabs for **Files**, **Chat** and **Cost**, and **Agent Flow** for Agent Flow's original node graph.
 - **The sidebar** puts on top whoever needs you (with the command waiting for approval), lists projects and agents, and shows each account's 5-hour and weekly limits.
 
