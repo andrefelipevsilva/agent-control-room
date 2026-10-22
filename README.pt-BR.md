@@ -4,7 +4,7 @@
 
 [Read in English](README.md)
 
-![Agent Control Room: capivaras em pixel art trabalhando no escritório enquanto o fluxo desenha a mesma sessão do Claude Code como git graph e um subagente sai num branch, depois as abas Arquivos e Custo, os layouts empilhado e flutuante e a barra lateral](docs/control-room.gif)
+![Agent Control Room em tela dividida: à esquerda, capivaras em pixel art trabalhando no escritório; à direita, o Agent Flow desenhando ao vivo a mesma sessão do Claude Code, cada ferramenta e um subagente saindo do principal, com uma passada pelo git graph da própria sala](docs/split-screen.gif)
 
 - O **escritório** mostra *quem* está trabalhando e *como está*: cada capivara tem a sua roupa e o seu chapéu (gorro, boné, fone, laranja ou um pintinho na cabeça), e cada estado tem um gesto (anel lime e código na tela trabalhando, balão de reticências pensando, pata levantada e anel laranja quando precisa de você, tela vermelha num erro), e quem está ocioso sai da mesa e vai para a copa. O botão **Habblaud** troca pelo mundo vivo em pixel art do Habblaud, onde os agentes andam pelo prédio, jogam pingue-pongue e fazem amizades e rivalidades.
 - O **fluxo** mostra *o que* eles fazem, com os números reais do arquivo da sessão: contexto usado, custo, `+/-` linhas em cada edição, quanto tempo cada comando levou, ferramentas e tokens de cada subagente. Abas **Arquivos**, **Chat** e **Custo**, e a aba **Agent Flow** com o grafo original do Agent Flow.

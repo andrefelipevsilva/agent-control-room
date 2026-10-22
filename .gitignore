@@ -1,4 +1,4 @@
 node_modules/
 .claude/settings.local.json
-# Raw recordings stay local; the README uses docs/control-room.gif.
+# Raw recordings stay local; the README uses docs/split-screen.gif.
 /*.mp4

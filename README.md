@@ -4,7 +4,7 @@
 
 [Leia em português](README.pt-BR.md)
 
-![Agent Control Room: pixel-art capybaras at work in the office while the flow draws the same Claude Code session as a git graph and a subagent branches off, then the Files and Cost tabs, the stacked and floating layouts and the sidebar](docs/control-room.gif)
+![Agent Control Room in split screen: on the left, pixel-art capybaras at work in the office; on the right, Agent Flow drawing the same Claude Code session live, every tool call and a subagent branching off, with a quick look at the room's own git graph](docs/split-screen.gif)
 
 - **The office** shows *who* is working and *how they are*: each capybara keeps its own outfit and hat (a beanie, a cap, headphones, an orange or a chick on its head), and each state has its own gesture (lime ring and code on the screens while working, a thought bubble while thinking, a raised paw and an orange ring when it needs you, a red screen on an error) and idle agents leave the desk for the kitchen. The **Habblaud** button swaps it for Habblaud's living pixel-art world, where agents walk around, play ping-pong and make friends and rivals.
 - **The flow** shows *what* they do, with real numbers from the session file: context used, cost, `+/-` lines per edit, how long each command took, tools and tokens of each subagent. Tabs for **Files**, **Chat** and **Cost**, and **Agent Flow** for Agent Flow's original node graph.
